@@ -1,0 +1,31 @@
+[
+  {
+    "id": "m-xze40ulzoy9",
+    "name": "Playwright",
+    "command": "npx",
+    "args": [
+      "-y",
+      "@playwright/mcp@latest",
+      "--isolated",
+      "--browser",
+      "chromium"
+    ],
+    "env": {},
+    "fromCatalog": "playwright",
+    "enabled": true,
+    "createdAt": 1779847210449
+  },
+  {
+    "id": "m-msw1wx8l8ic",
+    "name": "Memory",
+    "command": "npx",
+    "args": [
+      "-y",
+      "@modelcontextprotocol/server-memory"
+    ],
+    "env": {},
+    "fromCatalog": "memory",
+    "enabled": true,
+    "createdAt": 1779847235796
+  }
+]

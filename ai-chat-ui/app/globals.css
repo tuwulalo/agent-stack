@@ -1,0 +1,437 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ───────────── design tokens ───────────── */
+:root {
+  --background: 240 10% 4%;
+  --foreground: 240 5% 96%;
+  --muted: 240 6% 15%;
+  --muted-foreground: 240 4% 62%;
+  --border: 240 6% 20%;
+  --input: 240 6% 12%;
+  --ring: 263 70% 65%;
+
+  --bg-base:        #08080c;
+  --bg-elevated:    #15151f;
+  --border-subtle:  rgba(255, 255, 255, 0.06);
+  --text-primary:   #ececf1;
+  --text-secondary: #9b9ca8;
+  --text-tertiary:  #6c6d7a;
+  --accent:         #7c5cff;
+  --accent-glow:    rgba(124, 92, 255, 0.32);
+  --font-mono: var(--font-mono-loaded), 'JetBrains Mono', 'SF Mono', Menlo, Consolas, monospace;
+}
+
+/* ───────────── reset & base ───────────── */
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+  background:
+    radial-gradient(at 15% 0%, rgba(124, 92, 255, 0.10) 0px, transparent 55%),
+    radial-gradient(at 85% 100%, rgba(199, 121, 255, 0.07) 0px, transparent 55%),
+    var(--bg-base);
+  color: var(--text-primary);
+  font-family: var(--font-inter), Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+::selection {
+  background: rgba(124, 92, 255, 0.35);
+  color: #fff;
+}
+
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.08); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.16); }
+
+/* hint requested by integration spec */
+.lab-bg::before {
+  overflow: hidden;
+  max-width: 100vw;
+  max-height: 100vh;
+  box-sizing: border-box;
+}
+
+/* ───────────── markdown bubble styles (used inside chat) ───────────── */
+.md p { margin: 0 0 10px; line-height: 1.65; }
+.md p:last-child { margin-bottom: 0; }
+.md h1, .md h2, .md h3 { font-weight: 600; letter-spacing: -0.2px; margin: 16px 0 8px; }
+.md h1 { font-size: 19px; }
+.md h2 { font-size: 16px; }
+.md h3 { font-size: 14.5px; }
+.md ul, .md ol { margin: 0 0 10px; padding-left: 22px; }
+.md li { margin-bottom: 4px; }
+.md li::marker { color: var(--text-tertiary); }
+.md a {
+  color: #d8b4fe;
+  text-decoration: underline;
+  text-decoration-color: rgba(216, 180, 254, 0.4);
+  text-underline-offset: 2px;
+}
+.md blockquote {
+  border-left: 2px solid rgba(255,255,255,0.18);
+  padding: 2px 0 2px 14px;
+  margin: 0 0 12px;
+  color: var(--text-secondary);
+}
+.md code {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid var(--border-subtle);
+  color: #f0a8ff;
+}
+.md pre {
+  position: relative;
+  margin: 12px 0;
+  background: rgba(0,0,0,0.4);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.md pre code {
+  display: block;
+  padding: 12px 14px;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  line-height: 1.55;
+  overflow-x: auto;
+  white-space: pre;
+}
+.md table { border-collapse: collapse; margin: 12px 0; font-size: 13px; width: 100%; }
+.md th, .md td { padding: 6px 10px; border: 1px solid rgba(255,255,255,0.1); text-align: left; }
+.md th { background: rgba(255,255,255,0.04); font-weight: 600; }
+.md hr { border: none; border-top: 1px solid var(--border-subtle); margin: 16px 0; }
+
+.streaming-cursor {
+  display: inline-block;
+  width: 7px;
+  height: 14px;
+  margin-left: 2px;
+  background: var(--accent);
+  border-radius: 1px;
+  vertical-align: text-bottom;
+  animation: blink 1s ease-in-out infinite;
+}
+@keyframes blink {
+  0%, 40% { opacity: 1; }
+  50%, 90% { opacity: 0.2; }
+  100%    { opacity: 1; }
+}
+
+/* ============================================================
+   ZEK — design tokens + mascot animations
+   (из claude.ai/design handoff — отряд из 10 саб-агентов)
+   ============================================================ */
+:root {
+  --zek-bg:           #0a0a0b;
+  --zek-bg-1:         #0f0f11;
+  --zek-bg-2:         #15151a;
+  --zek-bg-3:         #1a1a20;
+  --zek-line:         #20202a;
+  --zek-line-2:       #2a2a36;
+  --zek-text:         #ececf0;
+  --zek-text-2:       #9a9aa6;
+  --zek-text-3:       #5d5d6b;
+  --zek-accent:       #4ade80;
+  --zek-accent-soft:  #4ade8022;
+  --zek-accent-line:  #4ade8044;
+  --zek-purple:       #a78bfa;
+  --zek-purple-soft:  #a78bfa22;
+  --zek-amber:        #fbbf24;
+  --zek-red:          #f87171;
+}
+
+/* ---------- мacкот: общее ---------- */
+.mascot-svg-el { display: block; overflow: visible; }
+
+/* живой режим — лёгкое «дыхание» + подсветка */
+.mascot-svg-el.is-live {
+  animation: zek-breathe 2.4s ease-in-out infinite;
+  filter: drop-shadow(0 0 8px var(--zek-accent-soft));
+}
+@keyframes zek-breathe {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50%      { transform: translateY(-1.5px) scale(1.03); }
+}
+
+/* Систо — крутится шестерня */
+.m-sisto.is-live .m-rotor { animation: zek-spin 4s linear infinite; transform-origin: 32px 32px; transform-box: fill-box; }
+@keyframes zek-spin { to { transform: rotate(360deg); } }
+
+/* Шилд — пульс щита + рот «дышит» */
+.m-shild.is-live .m-shield-body { animation: zek-pulse 1.4s ease-in-out infinite; transform-origin: 32px 32px; transform-box: fill-box; }
+.m-shild.is-live .m-shield-mouth { animation: zek-mouth-flat 1.6s ease-in-out infinite; }
+@keyframes zek-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.78; } }
+@keyframes zek-mouth-flat {
+  0%, 100% { d: path("M27 36 Q32 40 37 36"); }
+  50%      { d: path("M27 38 Q32 36 37 38"); }
+}
+
+/* Кэдди — LED-ы перемигиваются */
+.m-keddi.is-live .m-led-1 { animation: zek-blink 1.2s -0.0s ease-in-out infinite; }
+.m-keddi.is-live .m-led-2 { animation: zek-blink 1.2s -0.4s ease-in-out infinite; }
+.m-keddi.is-live .m-led-3 { animation: zek-blink 1.2s -0.8s ease-in-out infinite; }
+@keyframes zek-blink { 0%, 100% { opacity: 0.25; } 30% { opacity: 1; } 60% { opacity: 0.4; } }
+
+/* Хранитель — скан-линия гуляет */
+.m-hranitel.is-live .m-scan { animation: zek-scanline 2.2s ease-in-out infinite; }
+@keyframes zek-scanline {
+  0%, 100% { transform: translateY(0); opacity: 0.4; }
+  50%      { transform: translateY(14px); opacity: 1; }
+}
+
+/* Логан — строки лога «печатаются» */
+.m-logan.is-live .m-loglines rect:nth-child(1) { animation: zek-typeline 1.8s steps(20) -0.0s infinite; transform-origin: left; }
+.m-logan.is-live .m-loglines rect:nth-child(2) { animation: zek-typeline 1.8s steps(20) -0.6s infinite; transform-origin: left; }
+.m-logan.is-live .m-loglines rect:nth-child(3) { animation: zek-typeline 1.8s steps(20) -1.2s infinite; transform-origin: left; }
+@keyframes zek-typeline {
+  0%   { transform: scaleX(0); }
+  60%  { transform: scaleX(1); }
+  100% { transform: scaleX(1); opacity: 0.3; }
+}
+
+/* Сигнал — арки пульсируют наружу */
+.m-signal.is-live .m-arc-1 { animation: zek-arcpulse 1.4s ease-in-out -0.0s infinite; }
+.m-signal.is-live .m-arc-2 { animation: zek-arcpulse 1.4s ease-in-out -0.46s infinite; }
+.m-signal.is-live .m-arc-3 { animation: zek-arcpulse 1.4s ease-in-out -0.92s infinite; }
+@keyframes zek-arcpulse { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
+
+/* Мостик — звенья перемигиваются */
+.m-mostik.is-live .m-link-l { animation: zek-glow 1.2s ease-in-out -0.0s infinite; transform-origin: center; }
+.m-mostik.is-live .m-link-r { animation: zek-glow 1.2s ease-in-out -0.6s infinite; transform-origin: center; }
+@keyframes zek-glow { 0%, 100% { opacity: 0.55; } 50% { opacity: 1; } }
+
+/* Кувалд — машет молотком */
+.m-kuvald.is-live .m-hammer {
+  animation: zek-swing 1.1s cubic-bezier(.4,0,.6,1) infinite;
+  transform-origin: 32px 50px;
+  transform-box: fill-box;
+}
+@keyframes zek-swing {
+  0%, 100% { transform: rotate(-8deg); }
+  50%      { transform: rotate( 18deg); }
+}
+
+/* Окуляр — зрачок ходит туда-сюда */
+.m-okular.is-live .m-pupil { animation: zek-look 3s ease-in-out infinite; transform-origin: 32px 32px; transform-box: fill-box; }
+@keyframes zek-look {
+  0%, 100% { transform: translate(0, 0); }
+  25%      { transform: translate(-5px, -1px); }
+  50%      { transform: translate(0, 1px); }
+  75%      { transform: translate(5px, -1px); }
+}
+
+/* Маэстро — драгоценности зажигаются по очереди */
+.m-maestro.is-live .m-gem-1 { animation: zek-gem 1.6s ease-in-out -0.0s infinite; }
+.m-maestro.is-live .m-gem-2 { animation: zek-gem 1.6s ease-in-out -0.55s infinite; }
+.m-maestro.is-live .m-gem-3 { animation: zek-gem 1.6s ease-in-out -1.10s infinite; }
+@keyframes zek-gem {
+  0%, 100% { opacity: 0.5; transform: scale(1); transform-origin: center; transform-box: fill-box; }
+  50%      { opacity: 1;   transform: scale(1.5); }
+}
+
+/* ---------- squad page: дуги делегирования ---------- */
+.connection-path { fill: none; stroke-width: 1.2; stroke-linecap: round; }
+.connection-path.active {
+  stroke: var(--zek-purple);
+  stroke-dasharray: 3 6;
+  animation: zek-flow 0.9s linear infinite;
+  filter: drop-shadow(0 0 4px var(--zek-purple-soft));
+}
+.connection-path.done {
+  stroke: var(--zek-accent);
+  opacity: 0.35;
+  stroke-dasharray: 2 4;
+}
+@keyframes zek-flow { to { stroke-dashoffset: -18; } }
+
+/* ---------- squad page: pulse-индикатор живого режима ---------- */
+@keyframes zek-pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%      { opacity: 0.4; transform: scale(1.4); }
+}
+
+/* ---------- density tweak ---------- */
+body.zek-density-compact { font-size: 13px; }
+body.zek-density-compact .squad-grid-cell { min-height: 200px !important; padding: 16px !important; }
+body.zek-density-comfy   { font-size: 15px; }
+body.zek-density-comfy   .squad-grid-cell { min-height: 260px !important; padding: 32px 24px !important; }
+
+/* ============================================================
+   ZEK ETHER — граф межагентных диалогов (тайлы + дуги + бабблы)
+   ============================================================ */
+.zek-ether-canvas {
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 1px 1px, var(--zek-bg-3) 1px, transparent 0) 0 0 / 24px 24px,
+    var(--zek-bg);
+}
+.zek-ether-svg {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: visible;
+  z-index: 1;
+}
+.zek-ether-svg .edge { pointer-events: all; }
+.zek-ether-svg .edge path[stroke="transparent"] { pointer-events: stroke; }
+
+.zek-edge-path {
+  stroke: var(--zek-text-3);
+  transition: stroke 0.2s, stroke-width 0.2s, opacity 0.2s;
+  pointer-events: none;
+  fill: none;
+}
+.edge.cold .zek-edge-path { stroke: var(--zek-line-2); }
+.edge.warm .zek-edge-path { stroke: var(--zek-accent); opacity: 0.65; }
+.edge.active .zek-edge-path {
+  stroke: var(--zek-purple);
+  stroke-dasharray: 4 6;
+  animation: zek-flow 1s linear infinite;
+  filter: drop-shadow(0 0 4px var(--zek-purple-soft));
+}
+.edge.hover .zek-edge-path { opacity: 1; }
+.edge.selected .zek-edge-path {
+  stroke: var(--zek-purple);
+  stroke-dasharray: none;
+  filter: drop-shadow(0 0 6px var(--zek-purple-soft));
+  animation: none;
+}
+.edge.selected.cold .zek-edge-path { stroke: var(--zek-accent); }
+.edge.out-of-focus { opacity: 0.2; }
+
+.zek-edge-badge-bg {
+  fill: var(--zek-bg);
+  stroke: var(--zek-line-2);
+  stroke-width: 1;
+  transition: all .15s;
+}
+.zek-edge-badge-txt {
+  fill: var(--zek-text-2);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  pointer-events: none;
+  user-select: none;
+}
+.edge.warm .zek-edge-badge-bg { stroke: var(--zek-accent); }
+.edge.warm .zek-edge-badge-txt { fill: var(--zek-accent); }
+.edge.active .zek-edge-badge-bg { stroke: var(--zek-purple); }
+.edge.active .zek-edge-badge-txt { fill: var(--zek-purple); }
+.edge.selected .zek-edge-badge-bg { fill: var(--zek-purple); stroke: var(--zek-purple); }
+.edge.selected .zek-edge-badge-txt { fill: #1a1325; }
+.edge.hover .zek-edge-badge-bg { fill: var(--zek-bg-2); }
+
+/* node tiles */
+.zek-node-tile {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  width: 110px;
+  padding: 14px 8px 10px;
+  background: var(--zek-bg-1);
+  border: 1px solid var(--zek-line);
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  z-index: 2;
+  transition: all .2s;
+  font-family: inherit;
+  color: var(--zek-text);
+  /* spawn-in анимация когда тайл появляется в DOM */
+  animation: zek-tile-spawn 0.55s cubic-bezier(0.2, 0.8, 0.3, 1.2);
+}
+@keyframes zek-tile-spawn {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.4);
+    filter: blur(6px);
+  }
+  60% {
+    opacity: 1;
+    transform: translate(-50%, calc(-50% - 4px)) scale(1.08);
+    filter: blur(0);
+  }
+  100% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+    filter: blur(0);
+  }
+}
+.zek-node-tile:hover {
+  border-color: var(--zek-line-2);
+  background: var(--zek-bg-2);
+  transform: translate(-50%, calc(-50% - 2px));
+}
+.zek-node-tile.focused {
+  border-color: var(--zek-purple);
+  background: var(--zek-bg-2);
+  box-shadow: 0 0 0 1px var(--zek-purple), 0 0 24px var(--zek-purple-soft);
+}
+.zek-node-tile.dimmed { opacity: 0.35; }
+.zek-node-status { position: absolute; top: 8px; right: 8px; }
+.zek-node-name {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  margin-top: 2px;
+}
+.zek-node-meta {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--zek-text-3);
+  letter-spacing: 0.04em;
+  text-align: center;
+}
+
+/* bubbles in dialog panel */
+.zek-bubble-row { display: flex; align-items: flex-end; gap: 8px; max-width: 100%; }
+.zek-bubble-row.left { justify-content: flex-start; }
+.zek-bubble-row.right { justify-content: flex-end; }
+.zek-bubble {
+  background: var(--zek-bg-1);
+  border: 1px solid var(--zek-line);
+  border-radius: 10px;
+  padding: 8px 12px 10px;
+  max-width: 280px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.zek-bubble.delegate { border-left: 2px solid var(--zek-purple); }
+.zek-bubble.reply    { border-left: 2px solid var(--zek-accent); }
+.zek-bubble-row.right .zek-bubble.delegate { border-left: 1px solid var(--zek-line); border-right: 2px solid var(--zek-purple); }
+.zek-bubble-row.right .zek-bubble.reply    { border-left: 1px solid var(--zek-line); border-right: 2px solid var(--zek-accent); }
+
+/* «только что появилась» — flash для новой дуги на 2s */
+.edge.just-appeared .zek-edge-path {
+  animation: zek-edge-flash 2s ease-out;
+}
+.edge.just-appeared .zek-edge-badge-bg {
+  animation: zek-badge-flash 2s ease-out;
+}
+@keyframes zek-edge-flash {
+  0%   { stroke: var(--zek-amber); stroke-width: 4; filter: drop-shadow(0 0 16px rgba(251,191,36,0.6)); }
+  100% { /* end matches state-based base */ }
+}
+@keyframes zek-badge-flash {
+  0%   { fill: var(--zek-amber); stroke: var(--zek-amber); r: 16; filter: drop-shadow(0 0 12px rgba(251,191,36,0.7)); }
+  100% { /* end matches state-based base */ }
+}

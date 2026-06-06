@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Kimi Proxy Console</title>
+    <link rel="stylesheet" href="/styles.css">
+  </head>
+  <body>
+    <main class="shell">
+      <section class="hero">
+        <div>
+          <p class="eyebrow">Kimi API Gateway</p>
+          <h1>Прокси-консоль для Roo Code, OpenClowe и MCP</h1>
+          <p class="lead">Проверь OpenAI-compatible endpoint перед подключением клиентов. Секреты вводятся только локально в браузере и не сохраняются на сервере.</p>
+        </div>
+        <div class="status-card">
+          <span class="status-dot"></span>
+          <div>
+            <strong id="healthText">Проверка сервера...</strong>
+            <small id="modelText">model: unknown</small>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <form id="chatForm" class="composer">
+          <label>
+            Proxy API key
+            <input id="proxyKey" type="password" placeholder="Bearer key из .env">
+          </label>
+          <label>
+            Сообщение
+            <textarea id="prompt" rows="7" placeholder="Например: объясни, как подключить этот endpoint в Roo Code"></textarea>
+          </label>
+          <button type="submit">Отправить запрос</button>
+        </form>
+
+        <article class="response">
+          <div class="response-header">
+            <span>Ответ Kimi</span>
+            <button id="copyButton" type="button">Скопировать</button>
+          </div>
+          <pre id="output">Готов к запросу.</pre>
+        </article>
+      </section>
+    </main>
+
+    <script src="/app.js"></script>
+  </body>
+</html>

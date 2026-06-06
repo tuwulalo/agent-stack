@@ -1,0 +1,79 @@
+# =========================================================
+#  agent-stack — общий .gitignore
+#  ВАЖНО: все секреты и ключи держим ТУТ, в репу не попадают
+# =========================================================
+
+# ---- секреты, ключи, токены ----
+.env
+.env.*
+!.env.example
+!.env.*.example
+*.env
+*.env.local
+*.tg_token
+.tg_token
+.tg_token*
+*.key
+*.pem
+*.p12
+*.pfx
+*.crt
+id_rsa
+id_rsa.*
+id_ed25519
+id_ed25519.*
+authorized_keys
+known_hosts
+secrets.json
+credentials.json
+service-account*.json
+gcp-key*.json
+
+# ---- персональные данные / чаты / сессии агента ----
+agent-sessions.json
+agent-sessions.json.*
+chat-store/
+kimi-chats/
+automations-runs.jsonl
+automations-schedules.json
+telegram-state.json
+
+# ---- бэкапы / временные ----
+*.bak
+*.bak.*
+*~
+*.swp
+*.swo
+
+# ---- node / next ----
+node_modules/
+.next/
+out/
+.cache/
+.turbo/
+dist/
+build/
+coverage/
+*.tsbuildinfo
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ---- системное ----
+.DS_Store
+Thumbs.db
+
+# ---- IDE ----
+.idea/
+.vscode/
+*.iml
+
+# ---- Claude / агентский кэш (на всякий случай) ----
+.claude/projects/
+.claude/sessions/
+~/.claude/
+
+# ---- логи ----
+*.log
+logs/
