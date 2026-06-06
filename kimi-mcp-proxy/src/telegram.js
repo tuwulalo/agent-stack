@@ -1,4 +1,4 @@
-// Telegram bridge: lets the owner drive VPS agent sessions from @workgamza_bot.
+// Telegram bridge: lets the owner drive VPS agent sessions from their own bot.
 // Each "thread" maps to a persistent agent session (same infra as the platform),
 // so history syncs with the web UI. Locked to a single owner chat id.
 import fs from 'node:fs';

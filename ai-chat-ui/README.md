@@ -4,7 +4,7 @@ Next.js веб-интерфейс для AI-агента (Kimi API + Hermes Agen
 
 ## 🌐 Деплой на VPS (уже запущено)
 
-Открывай в браузере: **http://85.93.9.243:3002**
+Открывай в браузере: **http://YOUR_VPS_IP:3002**
 
 ## 💻 Локальный запуск на своем ПК
 
@@ -42,6 +42,6 @@ NEXT_PUBLIC_API_URL=http://localhost:3001
 
 ## 📡 Что подключено
 
-- **Kimi Proxy** — http://85.93.9.243:3001 (OpenAI-compatible API)
-- **Hermes Dashboard** — http://85.93.9.243:8081 (нативный UI Hermes)
-- **Этот UI** — http://85.93.9.243:3002 (кастомный Next.js чат)
+- **Kimi Proxy** — http://YOUR_VPS_IP:3001 (OpenAI-compatible API)
+- **Hermes Dashboard** — http://YOUR_VPS_IP:8081 (нативный UI Hermes)
+- **Этот UI** — http://YOUR_VPS_IP:3002 (кастомный Next.js чат)

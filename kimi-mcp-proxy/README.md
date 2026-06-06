@@ -51,7 +51,7 @@ MAX_REQUEST_BYTES=1048576
 В настройках Roo Code выбери OpenAI-compatible провайдера:
 
 ```text
-Base URL: http://85.93.9.243:3000/v1
+Base URL: http://YOUR_VPS_IP:3000/v1
 API Key: значение PROXY_API_KEY из .env
 Model: kimi-k2-0711-preview
 ```
@@ -65,7 +65,7 @@ Base URL: https://your-domain.com/v1
 ## Проверка через curl
 
 ```bash
-curl http://85.93.9.243:3000/v1/chat/completions \
+curl http://YOUR_VPS_IP:3000/v1/chat/completions \
   -H "Authorization: Bearer YOUR_PROXY_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{"model":"kimi-k2-0711-preview","messages":[{"role":"user","content":"Привет"}]}'

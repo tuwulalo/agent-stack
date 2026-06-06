@@ -17,7 +17,7 @@ function defaultKimiApi(): string {
 }
 
 export const KIMI_API = process.env.NEXT_PUBLIC_KIMI_API || defaultKimiApi()
-export const HERMES_DASHBOARD = process.env.NEXT_PUBLIC_HERMES_URL || 'https://hermestuw.qd.je/hermes'
+export const HERMES_DASHBOARD = process.env.NEXT_PUBLIC_HERMES_URL || ''
 
 export function agentFileUrl(absPath: string): string {
   return `${KIMI_API}/agent/file?path=${encodeURIComponent(absPath)}`

@@ -36,7 +36,7 @@ export function TelegramTab({ onOpen }: { onOpen: (sessionId: string) => void })
       </div>
 
       <div className="rounded-lg border border-white/[0.08] bg-white/[0.02] p-4 mb-4 text-[12.5px] text-white/70">
-        Бот: <a href={`https://t.me/${info?.botUsername || 'workgamza_bot'}`} target="_blank" rel="noopener" className="text-sky-300 hover:underline">@{info?.botUsername || 'workgamza_bot'}</a>
+        Бот: <a href={`https://t.me/${info?.botUsername || 'your_bot'}`} target="_blank" rel="noopener" className="text-sky-300 hover:underline">@{info?.botUsername || 'your_bot'}</a>
         {info?.linked
           ? <span className="ml-2 text-emerald-300">● привязан к владельцу</span>
           : <span className="ml-2 text-amber-300">○ не привязан — напиши боту любое сообщение, чтобы залочить его на себя</span>}

@@ -692,7 +692,7 @@ app.get('/automations/telegram', requiresAuth, (req, res) => {
       running: sess ? runningSessions.has(sess.claudeSessionId) : false,
     };
   });
-  res.json({ linked: !!st.ownerId, botUsername: 'workgamza_bot', active: st.active || 'agent', threads });
+  res.json({ linked: !!st.ownerId, botUsername: process.env.TELEGRAM_BOT_USERNAME || 'your_bot', active: st.active || 'agent', threads });
 });
 
 app.get('/automations/sessions', requiresAuth, (req, res) => {
@@ -741,7 +741,7 @@ app.post('/automations/trigger', requiresAuth, (req, res) => {
     try { touchAgentSession(child.id, { prompt: task, summary: outBuf, clean: code === 0 }); } catch {}
     console.log(`[trigger] session ${child.id} done code=${code}`);
   });
-  const base = process.env.PUBLIC_BASE_URL || 'https://hermestuw.qd.je';
+  const base = process.env.PUBLIC_BASE_URL || '';
   console.log(`[trigger] spawned session=${child.id} pid=${proc.pid}`);
   res.json({ sessionId: child.id, status: 'running',
     shareUrl: `${base}/share/${child.id}`,
