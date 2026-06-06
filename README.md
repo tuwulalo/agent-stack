@@ -70,6 +70,64 @@ Model:    то же что KIMI_MODEL
 
 ---
 
+## OAuth-вход + десктопный CLI
+
+Помимо basic-auth (логин/пароль) есть два более удобных способа:
+
+### 1) OAuth в браузере — GitHub / Google
+
+Зарегистрируй приложение в одной из консолей (или обеих):
+
+- **GitHub:** https://github.com/settings/developers → "New OAuth App".
+  Callback URL: `https://your-domain.tld/api/auth/oauth/github/callback`
+- **Google:** https://console.cloud.google.com/apis/credentials → OAuth client.
+  Redirect URI: `https://your-domain.tld/api/auth/oauth/google/callback`
+
+Впиши `OAUTH_*_CLIENT_ID/SECRET` в `ai-chat-ui/.env.local`. **Обязательно**
+поставь `ALLOWED_EMAILS=твой@email.com` — иначе любой человек с гитхабом
+получит доступ. Перезапусти `ai-chat-ui`. На `/login` появятся кнопки.
+
+### 2) Десктопный CLI — авторизация через Device Flow
+
+На своём компе:
+
+```bash
+# один раз — установка
+npm install -g /path/to/agent-stack/cli
+
+# логин
+agent-stack login --server https://your-domain.tld
+```
+
+CLI распечатает короткий код и URL, ты открываешь в браузере, логинишься
+(GitHub/Google/пароль — что настроил), вводишь код. CLI получает
+долгоживущий JWT-токен (90 дней) и сохраняет его в
+`~/.config/agent-stack/token.json` с правами `600`.
+
+Дальше любая OpenAI-совместимая тулза видит твой VPS как OpenAI:
+
+```bash
+eval "$(agent-stack env)"
+# OPENAI_BASE_URL=https://your-domain.tld/_kp/v1
+# OPENAI_API_KEY=<твой JWT>
+```
+
+В **Cursor / Cline / Antigravity / Roo Code**:
+
+```
+Base URL: https://your-domain.tld/_kp/v1
+API Key:  токен из ~/.config/agent-stack/token.json
+Model:    то же, что KIMI_MODEL на сервере
+```
+
+**Отзыв доступа:** меняешь `JWT_SECRET` в `kimi-mcp-proxy/.env` →
+`systemctl restart kimi-mcp-proxy` — все ранее выписанные device-токены
+становятся невалидными мгновенно.
+
+Подробнее: [`cli/README.md`](cli/README.md).
+
+---
+
 ## SSH-вход на VPS
 
 Полный мануал: [`deploy/ssh/README.md`](deploy/ssh/README.md). TL;DR:
@@ -112,8 +170,12 @@ agent-stack/
 │   ├── middleware.ts       # basic-auth
 │   ├── .env.local.example  # ← шаблон, заполняешь и сохраняешь как .env.local
 │   └── package.json
+├── cli/                    # десктопный CLI (OAuth Device Flow)
+│   ├── agent-stack.mjs     # сам бинарь
+│   └── README.md
 ├── deploy/
 │   ├── install.sh          # one-shot установка на свежий VPS
+│   ├── push-to-github.sh   # пушит репо на GitHub
 │   ├── systemd/            # юниты для kimi-mcp-proxy и ai-chat-ui
 │   ├── caddy/              # Caddyfile-snippet с HTTPS + reverse_proxy
 │   └── ssh/                # инструкция по SSH-ключам

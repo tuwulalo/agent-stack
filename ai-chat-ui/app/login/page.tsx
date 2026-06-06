@@ -1,12 +1,22 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 
 export default function LoginPage() {
   const [u, setU] = useState('admin')
   const [p, setP] = useState('')
   const [err, setErr] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+
+  // Ошибки от OAuth-callback: /login?error=not-allowed:foo@bar.com
+  useEffect(() => {
+    const e = new URLSearchParams(window.location.search).get('error')
+    if (e) setErr(decodeURIComponent(e))
+  }, [])
+
+  const next = typeof window !== 'undefined'
+    ? new URLSearchParams(window.location.search).get('next') || '/'
+    : '/'
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -138,9 +148,48 @@ export default function LoginPage() {
         >
           {loading ? 'Вход…' : 'Войти'}
         </button>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '18px 0' }}>
+          <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.08)' }} />
+          <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', letterSpacing: '0.08em' }}>
+            ИЛИ
+          </div>
+          <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.08)' }} />
+        </div>
+
+        <a
+          href={`/api/auth/oauth/github/start?next=${encodeURIComponent(next)}`}
+          style={oauthBtnStyle}
+        >
+          <span style={{ fontSize: 16 }}></span>
+          Войти через GitHub
+        </a>
+        <a
+          href={`/api/auth/oauth/google/start?next=${encodeURIComponent(next)}`}
+          style={{ ...oauthBtnStyle, marginTop: 8 }}
+        >
+          <span style={{ fontSize: 16 }}>G</span>
+          Войти через Google
+        </a>
       </form>
     </div>
   )
+}
+
+const oauthBtnStyle: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  gap: 10,
+  width: '100%',
+  padding: '10px 14px',
+  borderRadius: 10,
+  border: '1px solid rgba(255,255,255,0.12)',
+  background: 'rgba(255,255,255,0.04)',
+  color: '#fff',
+  fontSize: 14,
+  textDecoration: 'none',
+  boxSizing: 'border-box',
 }
 
 const labelStyle: React.CSSProperties = {

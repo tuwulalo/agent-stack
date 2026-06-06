@@ -55,6 +55,8 @@ import {
   restartMcp,
   updateMcp,
 } from './mcps.js';
+import { registerAuthDeviceRoutes } from './auth-device.js';
+import { verifyJwt } from './auth-jwt.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -79,16 +81,29 @@ function requiresAuth(req, res, next) {
   const authorization = req.get('authorization') || '';
   const token = authorization.startsWith('Bearer ') ? authorization.slice(7) : '';
 
-  if (token !== config.proxyApiKey) {
-    return res.status(401).json({ error: { message: 'Invalid proxy API key' } });
+  // 1) Shared static key — для серверных интеграций.
+  if (token && token === config.proxyApiKey) {
+    return next();
   }
 
-  return next();
+  // 2) JWT, выданный device-flow'ом — для CLI на компах пользователей.
+  if (token && process.env.JWT_SECRET) {
+    const payload = verifyJwt(token);
+    if (payload && payload.kind === 'device') {
+      req.tokenPayload = payload;
+      return next();
+    }
+  }
+
+  return res.status(401).json({ error: { message: 'Invalid proxy API key' } });
 }
 
 app.get('/health', (req, res) => {
   res.json({ ok: true, model: config.kimiModel });
 });
+
+// OAuth 2.0 Device Authorization Grant — для входа CLI на компе пользователя.
+registerAuthDeviceRoutes(app);
 
 app.get('/v1/models', requiresAuth, (req, res) => {
   res.json(getModelList());
