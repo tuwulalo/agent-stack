@@ -174,7 +174,6 @@ agent-stack/
 │   └── README.md
 ├── deploy/
 │   ├── install.sh          # one-shot install on a fresh VPS
-│   ├── push-to-github.sh   # pushes the repo to GitHub
 │   ├── systemd/            # units for kimi-mcp-proxy and ai-chat-ui
 │   ├── caddy/              # Caddyfile snippet with HTTPS + reverse_proxy
 │   └── ssh/                # SSH key instructions

@@ -1,47 +1,35 @@
 # AI Chat UI
 
-Next.js веб-интерфейс для AI-агента (Kimi API + Hermes Agent).
+Next.js web interface for the AI agent (Kimi proxy + Hermes Agent).
 
-## 🌐 Деплой на VPS (уже запущено)
-
-Открывай в браузере: **http://YOUR_VPS_IP:3002**
-
-## 💻 Локальный запуск на своем ПК
+## Run locally
 
 ```bash
-# 1. Скопируй проект
-git clone <репо> ai-chat-ui
+git clone <repo> ai-chat-ui
 cd ai-chat-ui
-
-# 2. Установи зависимости
 npm install
-
-# 3. Скопируй env-файл
 cp .env.local.example .env.local
-
-# 4. Запусти
 npm run dev
-
-# Открой http://localhost:3002
+# open http://localhost:3002
 ```
 
-## 🏗 Сборка для production
+## Production build
 
 ```bash
 npm run build
 npm start
 ```
 
-## 🔧 Подключение к своему API
+## Point it at your own proxy
 
-Если хочешь использовать свой прокси, поменяй `NEXT_PUBLIC_API_URL` в `.env.local`:
+Set `NEXT_PUBLIC_API_URL` in `.env.local`:
 
 ```env
 NEXT_PUBLIC_API_URL=http://localhost:3001
 ```
 
-## 📡 Что подключено
+## Ports
 
-- **Kimi Proxy** — http://YOUR_VPS_IP:3001 (OpenAI-compatible API)
-- **Hermes Dashboard** — http://YOUR_VPS_IP:8081 (нативный UI Hermes)
-- **Этот UI** — http://YOUR_VPS_IP:3002 (кастомный Next.js чат)
+- Kimi proxy: `:3001` (OpenAI-compatible API)
+- Hermes dashboard: `:8081` (Hermes native UI)
+- This UI: `:3002` (Next.js chat)

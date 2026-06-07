@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 # =====================================================================
-#  agent-stack — установка на чистый Ubuntu/Debian VPS
-#  Запускать от root: bash deploy/install.sh
+#  agent-stack — install on a clean Ubuntu/Debian VPS
+#  Run as root: bash deploy/install.sh
 # =====================================================================
 set -euo pipefail
 
 STACK_DIR="${STACK_DIR:-/opt/agent-stack}"
 
-echo "[1/6] apt update + базовые пакеты"
+echo "[1/6] apt update + base packages"
 apt update
 apt install -y curl ca-certificates gnupg git ufw
 
@@ -26,11 +26,11 @@ if ! command -v caddy >/dev/null 2>&1; then
   apt update && apt install -y caddy
 fi
 
-echo "[4/6] npm install для обоих приложений"
+echo "[4/6] npm install for both apps"
 cd "$STACK_DIR/kimi-mcp-proxy" && npm install --omit=dev
 cd "$STACK_DIR/ai-chat-ui" && npm install && npm run build
 
-echo "[5/6] systemd-юниты"
+echo "[5/6] systemd units"
 cp "$STACK_DIR/deploy/systemd/kimi-mcp-proxy.service" /etc/systemd/system/
 cp "$STACK_DIR/deploy/systemd/ai-chat-ui.service" /etc/systemd/system/
 systemctl daemon-reload
@@ -38,25 +38,25 @@ systemctl daemon-reload
 echo "[6/6] .env"
 if [ ! -f "$STACK_DIR/kimi-mcp-proxy/.env" ]; then
   cp "$STACK_DIR/kimi-mcp-proxy/.env.example" "$STACK_DIR/kimi-mcp-proxy/.env"
-  echo "  ⚠  Заполни /opt/agent-stack/kimi-mcp-proxy/.env (KIMI_API_KEY и т.п.)"
+  echo "  warning: fill in /opt/agent-stack/kimi-mcp-proxy/.env (KIMI_API_KEY etc.)"
 fi
 if [ ! -f "$STACK_DIR/ai-chat-ui/.env.local" ]; then
   cp "$STACK_DIR/ai-chat-ui/.env.local.example" "$STACK_DIR/ai-chat-ui/.env.local"
-  echo "  ⚠  Заполни /opt/agent-stack/ai-chat-ui/.env.local (AUTH_USER/PASSWORD)"
+  echo "  warning: fill in /opt/agent-stack/ai-chat-ui/.env.local (AUTH_USER/PASSWORD)"
 fi
 
-cat <<'EOF'
+cat <<'DONE'
 
 ============================================================
- ✅ Установка завершена.
+ Install complete.
 ============================================================
- Дальше:
-   1) nano /opt/agent-stack/kimi-mcp-proxy/.env        # ключ провайдера
-   2) nano /opt/agent-stack/ai-chat-ui/.env.local      # логин/пароль UI
+ Next:
+   1) nano /opt/agent-stack/kimi-mcp-proxy/.env        # provider key
+   2) nano /opt/agent-stack/ai-chat-ui/.env.local      # UI login/password
    3) systemctl enable --now kimi-mcp-proxy ai-chat-ui
-   4) Подключи домен в /etc/caddy/Caddyfile,
-      см. /opt/agent-stack/deploy/caddy/Caddyfile.snippet
+   4) Add your domain to /etc/caddy/Caddyfile,
+      see /opt/agent-stack/deploy/caddy/Caddyfile.snippet
    5) systemctl reload caddy
-   6) SSH-ключи: /opt/agent-stack/deploy/ssh/README.md
+   6) SSH keys: /opt/agent-stack/deploy/ssh/README.md
 ============================================================
-EOF
+DONE

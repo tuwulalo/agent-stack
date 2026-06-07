@@ -1,44 +1,44 @@
-# Безопасный SSH-вход на VPS
+# SSH key login for the VPS
 
-Хочется заходить ключом, а не паролем — это и быстрее, и сильно безопаснее.
+Key-based login is faster than a password and much harder to brute-force.
 
-## 1) Сгенерировать ключ на своём компе
+## 1) Generate a key on your machine
 
-На своём ноутбуке (НЕ на VPS):
+On your laptop (not the VPS):
 
 ```bash
-ssh-keygen -t ed25519 -C "tuwulal-vps" -f ~/.ssh/agent-stack
+ssh-keygen -t ed25519 -C "agent-stack-vps" -f ~/.ssh/agent-stack
 ```
 
-Получишь два файла: `agent-stack` (приватный, никому НЕ показывать) и
-`agent-stack.pub` (публичный, его кладёшь на VPS).
+You get two files: `agent-stack` (private, never share it) and `agent-stack.pub`
+(public, this one goes on the VPS).
 
-## 2) Закинуть публичный ключ на VPS
+## 2) Copy the public key to the VPS
 
-Самый простой способ — `ssh-copy-id`:
+Easiest way is `ssh-copy-id`:
 
 ```bash
 ssh-copy-id -i ~/.ssh/agent-stack.pub root@YOUR_VPS_IP
 ```
 
-Если `ssh-copy-id` нет:
+If `ssh-copy-id` isn't available:
 
 ```bash
 cat ~/.ssh/agent-stack.pub | ssh root@YOUR_VPS_IP \
   "mkdir -p ~/.ssh && chmod 700 ~/.ssh && cat >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys"
 ```
 
-## 3) Проверить вход по ключу
+## 3) Test key login
 
 ```bash
 ssh -i ~/.ssh/agent-stack root@YOUR_VPS_IP
 ```
 
-Должен пустить без пароля. ОК — переходи к шагу 4.
+It should let you in without a password. If it does, move on to step 4.
 
-## 4) Отключить вход по паролю (после того как ключ работает!)
+## 4) Disable password login (only after the key works)
 
-На VPS отредактируй `/etc/ssh/sshd_config`:
+Edit `/etc/ssh/sshd_config` on the VPS:
 
 ```
 PasswordAuthentication no
@@ -46,13 +46,13 @@ PubkeyAuthentication yes
 PermitRootLogin prohibit-password
 ```
 
-И перезапусти sshd:
+Restart sshd:
 
 ```bash
 systemctl restart ssh
 ```
 
-## 5) Удобный alias в ~/.ssh/config (на своём компе)
+## 5) Add an alias in ~/.ssh/config (on your machine)
 
 ```sshconfig
 Host agent-vps
@@ -62,28 +62,28 @@ Host agent-vps
     IdentitiesOnly yes
 ```
 
-Теперь заходить просто:
+Now you just run:
 
 ```bash
 ssh agent-vps
 ```
 
-## 6) (Опционально) Сменить порт SSH и поставить fail2ban
+## 6) Optional: change the SSH port and add fail2ban
 
-В `/etc/ssh/sshd_config`:
+In `/etc/ssh/sshd_config`:
 
 ```
 Port 2222
 ```
 
-И в файрволе:
+In the firewall:
 
 ```bash
 ufw allow 2222/tcp
 ufw delete allow 22/tcp
 ```
 
-Поставь fail2ban против перебора:
+Add fail2ban against brute-force:
 
 ```bash
 apt update && apt install -y fail2ban
@@ -92,7 +92,7 @@ systemctl enable --now fail2ban
 
 ---
 
-**ПРЕДУПРЕЖДЕНИЕ:** прежде чем выключать `PasswordAuthentication`, УБЕДИСЬ что
-ключ реально работает. Иначе можно случайно запереть себя снаружи. Держи
-второе окно с уже открытой SSH-сессией — если что-то пошло не так,
-правишь и перезапускаешь sshd оттуда.
+**Warning:** before turning off `PasswordAuthentication`, make sure the key
+actually works, or you can lock yourself out. Keep a second SSH session open
+while you edit sshd config — if something breaks, you can fix it and restart
+sshd from there.
