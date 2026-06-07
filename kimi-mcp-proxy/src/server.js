@@ -11,6 +11,7 @@ import morgan from 'morgan';
 import multer from 'multer';
 import { config } from './config.js';
 import { callKimiChatCompletion, getModelList } from './kimi-client.js';
+import { callCliChatCompletion, streamCliChatCompletion, getCliModelList } from './cli-client.js';
 import {
   buildMemoryBlock,
   deleteNote,
@@ -99,17 +100,54 @@ function requiresAuth(req, res, next) {
 }
 
 app.get('/health', (req, res) => {
-  res.json({ ok: true, model: config.kimiModel });
+  const model = config.llmBackend === 'cli'
+    ? (config.cliModel || `${config.cliProvider}-cli`)
+    : config.kimiModel;
+  res.json({ ok: true, backend: config.llmBackend, model });
 });
 
 // OAuth 2.0 Device Authorization Grant — для входа CLI на компе пользователя.
 registerAuthDeviceRoutes(app);
 
 app.get('/v1/models', requiresAuth, (req, res) => {
-  res.json(getModelList());
+  res.json(config.llmBackend === 'cli' ? getCliModelList() : getModelList());
 });
 
+async function handleCliCompletion(req, res) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), config.cliTimeoutMs);
+
+  try {
+    if (req.body?.stream) {
+      res.status(200);
+      res.setHeader('Content-Type', 'text/event-stream');
+      res.setHeader('Cache-Control', 'no-cache');
+      res.setHeader('Connection', 'keep-alive');
+      res.setHeader('X-Accel-Buffering', 'no');
+      res.flushHeaders?.();
+      await streamCliChatCompletion(req.body, res, { signal: controller.signal });
+      return;
+    }
+    const result = await callCliChatCompletion(req.body, { signal: controller.signal });
+    res.json(result);
+  } catch (error) {
+    const status = error.name === 'AbortError' ? 504 : error.status || 500;
+    const message = error.name === 'AbortError' ? 'CLI request timed out' : error.message;
+    if (!res.headersSent) {
+      res.status(status).json({ error: { message } });
+    } else {
+      try { res.end(); } catch { /* ignore */ }
+    }
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 app.post('/v1/chat/completions', requiresAuth, async (req, res) => {
+  if (config.llmBackend === 'cli') {
+    return handleCliCompletion(req, res);
+  }
+
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), config.requestTimeoutMs);
 

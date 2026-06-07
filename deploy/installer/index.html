@@ -1,0 +1,433 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>agent-stack — установщик</title>
+<style>
+  :root {
+    --bg: #0b0d10;
+    --bg-2: #12161c;
+    --panel: #161b22;
+    --border: #232a33;
+    --text: #e6edf3;
+    --muted: #8b949e;
+    --accent: #7c9cff;
+    --accent-2: #5a7cff;
+    --ok: #3fb950;
+    --warn: #d29922;
+    --err: #f85149;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box }
+  html, body { background: var(--bg); color: var(--text); margin: 0; font: 14px/1.5 system-ui, ui-sans-serif, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  .wrap { max-width: 880px; margin: 0 auto; padding: 32px 20px 64px; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  h2 { font-size: 16px; margin: 0 0 12px; }
+  .sub { color: var(--muted); margin-bottom: 24px; }
+  .steps { display: flex; gap: 8px; margin-bottom: 24px; flex-wrap: wrap; }
+  .steps .pill {
+    flex: 1 1 0; min-width: 110px;
+    padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px;
+    background: var(--bg-2); color: var(--muted); font-size: 12px; text-align: center;
+  }
+  .steps .pill.active { color: var(--text); border-color: var(--accent); }
+  .steps .pill.done { color: var(--ok); border-color: rgba(63,185,80,.4); }
+  .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 20px; margin-bottom: 16px; }
+  .row { display: grid; grid-template-columns: 180px 1fr; gap: 10px 16px; align-items: center; margin: 8px 0; }
+  .row label { color: var(--muted); }
+  input[type=text], input[type=password], select {
+    width: 100%; padding: 8px 10px; border-radius: 6px;
+    background: var(--bg); color: var(--text); border: 1px solid var(--border);
+    font: inherit;
+  }
+  input:focus, select:focus { outline: none; border-color: var(--accent); }
+  .radio { display: flex; gap: 16px; flex-wrap: wrap; }
+  .radio label { display: flex; gap: 6px; color: var(--text); cursor: pointer; }
+  .btnrow { display: flex; gap: 10px; justify-content: flex-end; margin-top: 16px; flex-wrap: wrap; }
+  button {
+    padding: 9px 16px; border-radius: 6px; border: 1px solid var(--border);
+    background: var(--bg-2); color: var(--text); font: inherit; cursor: pointer;
+  }
+  button:hover:not(:disabled) { border-color: var(--accent); }
+  button.primary { background: var(--accent-2); border-color: var(--accent-2); color: white; }
+  button.primary:hover:not(:disabled) { background: var(--accent); border-color: var(--accent); }
+  button:disabled { opacity: .5; cursor: not-allowed; }
+  .checklist { list-style: none; padding: 0; margin: 0; }
+  .checklist li { padding: 8px 0; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; }
+  .checklist li:last-child { border-bottom: none; }
+  .mark { font-size: 18px; width: 22px; text-align: center; }
+  .mark.ok { color: var(--ok); }
+  .mark.bad { color: var(--err); }
+  .mark.warn { color: var(--warn); }
+  .meta { color: var(--muted); font-family: var(--mono); font-size: 12px; margin-left: auto; max-width: 50%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .log {
+    background: #06080b; border: 1px solid var(--border); border-radius: 8px;
+    padding: 10px 12px; font-family: var(--mono); font-size: 12px; line-height: 1.5;
+    height: 280px; overflow: auto; white-space: pre-wrap; word-break: break-word;
+    color: #cbd5e0;
+  }
+  .log .cmd { color: var(--accent); }
+  .log .err { color: var(--err); }
+  .step-list { display: grid; gap: 8px; margin-bottom: 12px; }
+  .step-card {
+    display: grid; grid-template-columns: 28px 1fr auto; gap: 10px; align-items: center;
+    padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg-2);
+  }
+  .step-card .lbl { color: var(--text); }
+  .step-card .desc { color: var(--muted); font-size: 12px; }
+  .badge { font-size: 11px; padding: 3px 8px; border-radius: 999px; background: var(--bg); color: var(--muted); border: 1px solid var(--border); }
+  .badge.ok { color: var(--ok); border-color: rgba(63,185,80,.4); }
+  .badge.err { color: var(--err); border-color: rgba(248,81,73,.4); }
+  .badge.run { color: var(--accent); border-color: rgba(124,156,255,.4); }
+  .hint { color: var(--muted); font-size: 12px; margin-top: 6px; }
+  .demo-banner {
+    background: rgba(210,153,34,.1); border: 1px solid rgba(210,153,34,.4);
+    color: var(--warn); padding: 8px 12px; border-radius: 6px; margin-bottom: 16px; font-size: 13px;
+  }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .hidden { display: none !important; }
+  .small { font-size: 12px; color: var(--muted); }
+  code { background: var(--bg-2); padding: 1px 6px; border-radius: 4px; font-family: var(--mono); font-size: 12px; }
+  @media (max-width: 640px) {
+    .row { grid-template-columns: 1fr; }
+    .grid-2 { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>agent-stack — установщик</h1>
+  <div class="sub">Локальный мастер. Открыт только на 127.0.0.1.</div>
+
+  <div id="demo-banner" class="demo-banner hidden">
+    Включён демо-режим (<code>INSTALLER_DEMO=1</code>). Команды apt/systemctl/npm НЕ выполняются — только эхо.
+  </div>
+
+  <div class="steps">
+    <div class="pill" data-pill="1">1 · Система</div>
+    <div class="pill" data-pill="2">2 · Бэкенд</div>
+    <div class="pill" data-pill="3">3 · Доступ</div>
+    <div class="pill" data-pill="4">4 · Установка</div>
+    <div class="pill" data-pill="5">5 · Готово</div>
+  </div>
+
+  <!-- ===== Шаг 1: Detect ===== -->
+  <section id="step-1" class="panel">
+    <h2>Шаг 1 · Проверка системы</h2>
+    <div class="sub small">Что уже установлено и где живёт стек.</div>
+    <ul id="detect-list" class="checklist">
+      <li><span class="mark">…</span><span>Проверяю окружение…</span></li>
+    </ul>
+    <div class="btnrow">
+      <button id="btn-recheck">Перепроверить</button>
+      <button id="btn-to-2" class="primary">Далее →</button>
+    </div>
+  </section>
+
+  <!-- ===== Шаг 2: Backend ===== -->
+  <section id="step-2" class="panel hidden">
+    <h2>Шаг 2 · Выбор бэкенда</h2>
+    <div class="sub small">Через что прокси будет ходить за моделью.</div>
+    <div class="radio">
+      <label><input type="radio" name="backend" value="cli" checked> CLI-подписка (Claude Max / ChatGPT Plus / Gemini)</label>
+      <label><input type="radio" name="backend" value="api"> OpenAI-совместимый API</label>
+    </div>
+
+    <div id="cli-fields" style="margin-top: 16px;">
+      <div class="row">
+        <label>CLI_PROVIDER</label>
+        <select id="cli-provider">
+          <option value="claude">claude — Anthropic Claude Code</option>
+          <option value="codex">codex — OpenAI Codex / ChatGPT</option>
+          <option value="gemini">gemini — Google Gemini CLI</option>
+        </select>
+      </div>
+      <div class="row">
+        <label>CLI_MODEL</label>
+        <input type="text" id="cli-model" placeholder="например: claude-opus-4-7 (или пусто = дефолт)">
+      </div>
+      <div class="hint">CLI должен быть установлен и залогинен. Авторизация требует TTY — выполни в SSH:
+        <code>claude login</code> / <code>codex login</code> / <code>gemini auth</code>.
+      </div>
+    </div>
+
+    <div id="api-fields" class="hidden" style="margin-top: 16px;">
+      <div class="row">
+        <label>KIMI_BASE_URL</label>
+        <input type="text" id="kimi-base" placeholder="https://api.moonshot.ai/v1">
+      </div>
+      <div class="row">
+        <label>KIMI_API_KEY</label>
+        <input type="password" id="kimi-key" placeholder="sk-...">
+      </div>
+      <div class="row">
+        <label>KIMI_MODEL</label>
+        <input type="text" id="kimi-model" placeholder="kimi-k2-0711-preview">
+      </div>
+      <div class="hint">Переменные исторически называются KIMI_*, по факту это любой OpenAI-совместимый endpoint
+        (OpenAI, OpenRouter, DeepSeek, Mistral, Cerebras, xAI, Anthropic…).
+      </div>
+    </div>
+
+    <div class="btnrow">
+      <button id="btn-back-1">← Назад</button>
+      <button id="btn-to-3" class="primary">Далее →</button>
+    </div>
+  </section>
+
+  <!-- ===== Шаг 3: Access ===== -->
+  <section id="step-3" class="panel hidden">
+    <h2>Шаг 3 · Доступ</h2>
+    <div class="sub small">Логин в UI и токен для прокси.</div>
+    <div class="row">
+      <label>AUTH_USER</label>
+      <input type="text" id="auth-user" value="admin">
+    </div>
+    <div class="row">
+      <label>AUTH_PASSWORD</label>
+      <input type="text" id="auth-password" placeholder="придумай длинный пароль">
+    </div>
+    <div class="row">
+      <label>PROXY_API_KEY</label>
+      <input type="text" id="proxy-key">
+    </div>
+    <div class="row">
+      <label></label>
+      <div><button id="btn-regen">Сгенерировать заново</button>
+        <span class="small" style="margin-left:8px;">Bearer-токен для входящих запросов в прокси.</span></div>
+    </div>
+    <div class="row">
+      <label>PUBLIC_BASE</label>
+      <input type="text" id="public-base" placeholder="https://your-domain.tld">
+    </div>
+    <div class="btnrow">
+      <button id="btn-back-2">← Назад</button>
+      <button id="btn-save-env" class="primary">Сохранить .env и далее →</button>
+    </div>
+  </section>
+
+  <!-- ===== Шаг 4: Install ===== -->
+  <section id="step-4" class="panel hidden">
+    <h2>Шаг 4 · Установка</h2>
+    <div class="sub small">Запускай по очереди. Лог стримится в реальном времени.</div>
+    <div class="step-list" id="step-list"></div>
+    <h2 style="margin-top: 16px;">Лог</h2>
+    <div class="log" id="log"></div>
+    <div class="btnrow">
+      <button id="btn-back-3">← Назад</button>
+      <button id="btn-run-all">Запустить все шаги по очереди</button>
+      <button id="btn-to-5" class="primary">Далее →</button>
+    </div>
+  </section>
+
+  <!-- ===== Шаг 5: Done ===== -->
+  <section id="step-5" class="panel hidden">
+    <h2>Шаг 5 · Готово</h2>
+    <div class="sub small">Что дальше.</div>
+    <ul class="checklist">
+      <li><span class="mark ok">✓</span><span>Конфиги <code>kimi-mcp-proxy/.env</code> и <code>ai-chat-ui/.env.local</code> записаны.</span></li>
+      <li><span class="mark ok">✓</span><span>Если был выбран CLI-бэкенд — авторизуйся в SSH-сессии: <code>claude login</code> (или codex/gemini).</span></li>
+      <li><span class="mark ok">✓</span><span>Прокси: <code>http://127.0.0.1:3001</code> · UI: <code>http://127.0.0.1:3002</code></span></li>
+      <li><span class="mark ok">✓</span><span>Внешний доступ — через Caddy: <code>/opt/agent-stack/deploy/caddy/Caddyfile.snippet</code></span></li>
+    </ul>
+    <div class="btnrow">
+      <button id="btn-back-4">← Назад</button>
+    </div>
+  </section>
+
+</div>
+
+<script>
+const $ = (sel) => document.querySelector(sel);
+const $$ = (sel) => document.querySelectorAll(sel);
+
+// ----- step navigation -----
+let cur = 1;
+function go(n) {
+  cur = n;
+  for (let i = 1; i <= 5; i++) {
+    $(`#step-${i}`).classList.toggle('hidden', i !== n);
+    const pill = document.querySelector(`.pill[data-pill="${i}"]`);
+    pill.classList.toggle('active', i === n);
+    pill.classList.toggle('done', i < n);
+  }
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ----- detect -----
+async function detect() {
+  const list = $('#detect-list');
+  list.innerHTML = '<li><span class="mark">…</span><span>Проверяю окружение…</span></li>';
+  try {
+    const r = await fetch('/api/detect').then(r => r.json());
+    if (r.demo) $('#demo-banner').classList.remove('hidden');
+    const items = [
+      { k: 'node', label: 'Node.js' },
+      { k: 'claude', label: 'claude CLI' },
+      { k: 'codex', label: 'codex CLI' },
+      { k: 'gemini', label: 'gemini CLI' },
+      { k: 'caddy', label: 'Caddy' },
+      { k: 'stack', label: '/opt/agent-stack' },
+    ];
+    list.innerHTML = '';
+    for (const it of items) {
+      const v = r[it.k] || { ok: false };
+      const li = document.createElement('li');
+      const mark = v.ok ? '<span class="mark ok">✓</span>' : '<span class="mark bad">✗</span>';
+      const meta = v.ok ? v.version : (v.error || 'не найдено');
+      li.innerHTML = `${mark}<span>${it.label}</span><span class="meta">${meta}</span>`;
+      list.appendChild(li);
+    }
+  } catch (e) {
+    list.innerHTML = `<li><span class="mark bad">✗</span><span>Ошибка: ${e.message}</span></li>`;
+  }
+}
+
+// ----- backend radio toggle -----
+function syncBackend() {
+  const v = document.querySelector('input[name=backend]:checked').value;
+  $('#cli-fields').classList.toggle('hidden', v !== 'cli');
+  $('#api-fields').classList.toggle('hidden', v !== 'api');
+}
+
+// ----- random key -----
+function genKey(n = 48) {
+  const buf = new Uint8Array(n);
+  crypto.getRandomValues(buf);
+  return btoa(String.fromCharCode(...buf)).replace(/[^A-Za-z0-9]/g, '').slice(0, n);
+}
+
+// ----- save env -----
+async function saveEnv() {
+  const backend = document.querySelector('input[name=backend]:checked').value;
+  const payload = {
+    LLM_BACKEND: backend,
+    CLI_PROVIDER: $('#cli-provider').value,
+    CLI_MODEL: $('#cli-model').value,
+    KIMI_BASE_URL: $('#kimi-base').value,
+    KIMI_API_KEY: $('#kimi-key').value,
+    KIMI_MODEL: $('#kimi-model').value,
+    AUTH_USER: $('#auth-user').value,
+    AUTH_PASSWORD: $('#auth-password').value,
+    PROXY_API_KEY: $('#proxy-key').value,
+    PUBLIC_BASE: $('#public-base').value,
+  };
+  const btn = $('#btn-save-env');
+  btn.disabled = true; btn.textContent = 'Сохраняю…';
+  try {
+    const r = await fetch('/api/env', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    }).then(r => r.json());
+    if (!r.ok) throw new Error(r.error || 'unknown');
+    alert('Записаны файлы:\n' + (r.written || []).join('\n'));
+    go(4);
+  } catch (e) {
+    alert('Ошибка: ' + e.message);
+  } finally {
+    btn.disabled = false; btn.textContent = 'Сохранить .env и далее →';
+  }
+}
+
+// ----- install steps -----
+const INSTALL_STEPS = [
+  { id: 'deps', label: 'apt: базовые пакеты', desc: 'curl, ca-certificates, gnupg, git, ufw' },
+  { id: 'node', label: 'Node.js 20.x', desc: 'NodeSource setup + apt install nodejs' },
+  { id: 'proxy-deps', label: 'kimi-mcp-proxy', desc: 'npm install --omit=dev' },
+  { id: 'ui-deps', label: 'ai-chat-ui', desc: 'npm install + npm run build' },
+  { id: 'services', label: 'systemd', desc: 'enable kimi-mcp-proxy + ai-chat-ui' },
+  { id: 'verify', label: 'verify', desc: 'curl /health' },
+];
+
+function renderSteps() {
+  const list = $('#step-list');
+  list.innerHTML = '';
+  for (const s of INSTALL_STEPS) {
+    const card = document.createElement('div');
+    card.className = 'step-card';
+    card.dataset.step = s.id;
+    card.innerHTML = `
+      <button class="run-one" data-step="${s.id}" title="Запустить шаг">▶</button>
+      <div><div class="lbl">${s.label}</div><div class="desc">${s.desc}</div></div>
+      <span class="badge" data-badge="${s.id}">ожидание</span>
+    `;
+    list.appendChild(card);
+  }
+  for (const b of $$('.run-one')) b.addEventListener('click', () => runStep(b.dataset.step));
+}
+
+function logLine(text, cls) {
+  const log = $('#log');
+  const div = document.createElement('div');
+  if (cls) div.className = cls;
+  div.textContent = text;
+  log.appendChild(div);
+  log.scrollTop = log.scrollHeight;
+}
+
+function setBadge(stepId, kind, text) {
+  const b = document.querySelector(`[data-badge="${stepId}"]`);
+  if (!b) return;
+  b.className = 'badge ' + kind;
+  b.textContent = text;
+}
+
+function runStep(stepId) {
+  return new Promise((resolve) => {
+    setBadge(stepId, 'run', 'выполняю…');
+    logLine(`\n── ${stepId} ──`, 'cmd');
+    const es = new EventSource('/api/run?step=' + encodeURIComponent(stepId));
+    es.addEventListener('start', (e) => { /* noop */ });
+    es.onmessage = (e) => { logLine(e.data); };
+    es.addEventListener('done', (e) => {
+      let code = 0;
+      try { code = JSON.parse(e.data).code; } catch {}
+      es.close();
+      if (code === 0) { setBadge(stepId, 'ok', 'ок'); resolve(true); }
+      else { setBadge(stepId, 'err', 'ошибка ' + code); resolve(false); }
+    });
+    es.onerror = () => {
+      es.close();
+      setBadge(stepId, 'err', 'разрыв SSE');
+      logLine('[SSE error]', 'err');
+      resolve(false);
+    };
+  });
+}
+
+async function runAll() {
+  $('#btn-run-all').disabled = true;
+  for (const s of INSTALL_STEPS) {
+    const ok = await runStep(s.id);
+    if (!ok) break;
+  }
+  $('#btn-run-all').disabled = false;
+}
+
+// ----- wire up -----
+window.addEventListener('DOMContentLoaded', () => {
+  $('#proxy-key').value = genKey(48);
+  renderSteps();
+  detect();
+  syncBackend();
+  for (const r of document.querySelectorAll('input[name=backend]')) r.addEventListener('change', syncBackend);
+  $('#btn-recheck').addEventListener('click', detect);
+  $('#btn-to-2').addEventListener('click', () => go(2));
+  $('#btn-back-1').addEventListener('click', () => go(1));
+  $('#btn-to-3').addEventListener('click', () => go(3));
+  $('#btn-back-2').addEventListener('click', () => go(2));
+  $('#btn-back-3').addEventListener('click', () => go(3));
+  $('#btn-back-4').addEventListener('click', () => go(4));
+  $('#btn-regen').addEventListener('click', () => { $('#proxy-key').value = genKey(48); });
+  $('#btn-save-env').addEventListener('click', saveEnv);
+  $('#btn-run-all').addEventListener('click', runAll);
+  $('#btn-to-5').addEventListener('click', () => go(5));
+  go(1);
+});
+</script>
+</body>
+</html>
