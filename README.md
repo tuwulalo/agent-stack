@@ -1,207 +1,206 @@
 # agent-stack
 
-Self-hosted AI-агент: OpenAI-compatible прокси + чат-фронт + оркестрация
-саб-агентов и автоматизаций. Заводится на одном VPS за 5 минут.
+Self-hosted AI agent: an OpenAI-compatible proxy + chat frontend + orchestration
+of sub-agents and automations. Spins up on a single VPS in 5 minutes.
 
-Внутри две части:
+Two parts inside:
 
-- **`kimi-mcp-proxy/`** — Node/Express бэкенд (порт `3001`):
-  OpenAI-compatible `/v1/chat/completions`, MCP stdio-сервер, оркестрация
-  саб-агентов через `claude` CLI, Telegram-бот, очередь автоматизаций.
-- **`ai-chat-ui/`** — Next.js фронт (порт `3002`): чат поверх прокси,
-  basic-auth через middleware, история сессий.
+- **`kimi-mcp-proxy/`** — Node/Express backend (port `3001`):
+  OpenAI-compatible `/v1/chat/completions`, an MCP stdio server, sub-agent
+  orchestration via the `claude` CLI, a Telegram bot, and an automations queue.
+- **`ai-chat-ui/`** — Next.js frontend (port `3002`): a chat UI on top of the
+  proxy, basic-auth via middleware, session history.
 
-Сверху — **Caddy** с автоматическим HTTPS на твой домен.
+On top sits **Caddy** with automatic HTTPS for your domain.
 
 ---
 
-## Быстрый старт
+## Quick start
 
 ```bash
-# на свежем Ubuntu/Debian VPS, от root
-git clone https://github.com/<твой-юзер>/agent-stack.git /opt/agent-stack
+# on a fresh Ubuntu/Debian VPS, as root
+git clone https://github.com/<your-user>/agent-stack.git /opt/agent-stack
 cd /opt/agent-stack
 bash deploy/install.sh
-nano kimi-mcp-proxy/.env       # вписать KIMI_API_KEY (или другой провайдер)
-nano ai-chat-ui/.env.local     # вписать AUTH_USER / AUTH_PASSWORD
+nano kimi-mcp-proxy/.env       # set KIMI_API_KEY (or another provider)
+nano ai-chat-ui/.env.local     # set AUTH_USER / AUTH_PASSWORD
 systemctl enable --now kimi-mcp-proxy ai-chat-ui
 ```
 
-Доступ:
-- Локально: `http://VPS_IP:3002` (фронт), `http://VPS_IP:3001/health` (прокси).
-- По домену + HTTPS: см. `deploy/caddy/Caddyfile.snippet`.
+Access:
+- Local: `http://VPS_IP:3002` (frontend), `http://VPS_IP:3001/health` (proxy).
+- Over a domain + HTTPS: see `deploy/caddy/Caddyfile.snippet`.
 
 ---
 
-## Подключение к разным LLM-провайдерам
+## Connecting to different LLM providers
 
-Прокси **OpenAI-compatible** — это значит, что любой провайдер с
-OpenAI-совместимым API подключается просто заменой трёх переменных в `.env`:
+The proxy is **OpenAI-compatible**, which means any provider with an
+OpenAI-compatible API connects by swapping just three variables in `.env`:
 
-| Провайдер | `KIMI_BASE_URL` | `KIMI_MODEL` (пример) |
+| Provider | `KIMI_BASE_URL` | `KIMI_MODEL` (example) |
 |---|---|---|
 | Moonshot / **Kimi** | `https://api.moonshot.ai/v1` | `kimi-k2-0711-preview` |
 | OpenAI / **GPT** | `https://api.openai.com/v1` | `gpt-4o` |
 | Anthropic / **Claude** | `https://api.anthropic.com/v1` | `claude-opus-4-7` |
 | Google / **Gemini** / **Antigravity** | `https://generativelanguage.googleapis.com/v1beta/openai` | `gemini-2.5-pro` |
-| **Cerebras** (он же "Села") | `https://api.cerebras.ai/v1` | `llama-3.3-70b` |
+| **Cerebras** | `https://api.cerebras.ai/v1` | `llama-3.3-70b` |
 | **DeepSeek** | `https://api.deepseek.com/v1` | `deepseek-chat` |
-| **OpenRouter** (всё сразу) | `https://openrouter.ai/api/v1` | `anthropic/claude-opus-4` |
+| **OpenRouter** (everything at once) | `https://openrouter.ai/api/v1` | `anthropic/claude-opus-4` |
 | **xAI / Grok** | `https://api.x.ai/v1` | `grok-4` |
 | **Mistral** | `https://api.mistral.ai/v1` | `mistral-large-latest` |
 
-Все варианты предзаполнены закомментированными блоками в
-[`kimi-mcp-proxy/.env.example`](kimi-mcp-proxy/.env.example) — раскомментируй
-нужный, остальные оставь под `#`.
+All options are pre-filled as commented-out blocks in
+[`kimi-mcp-proxy/.env.example`](kimi-mcp-proxy/.env.example) — uncomment the one
+you need and leave the rest under `#`.
 
-### Подключение IDE/клиента к прокси
+### Connecting an IDE/client to the proxy
 
-Прокси отдаёт OpenAI-совместимый эндпоинт, поэтому к нему цепляется что
-угодно: **Antigravity**, **Cursor**, **Cline**, **Roo Code**, любой
-OpenAI-SDK-клиент.
+The proxy exposes an OpenAI-compatible endpoint, so anything can connect to it:
+**Antigravity**, **Cursor**, **Cline**, **Roo Code**, any OpenAI-SDK client.
 
 ```text
 Base URL: https://your-domain.tld/_kp/v1
-API Key:  значение PROXY_API_KEY из .env
-Model:    то же что KIMI_MODEL
+API Key:  the PROXY_API_KEY value from .env
+Model:    same as KIMI_MODEL
 ```
 
-`PROXY_API_KEY` обязателен — иначе любой в интернете будет тратить твою квоту.
+`PROXY_API_KEY` is mandatory — otherwise anyone on the internet can burn your quota.
 
 ---
 
-## OAuth-вход + десктопный CLI
+## OAuth login + desktop CLI
 
-Помимо basic-auth (логин/пароль) есть два более удобных способа:
+Besides basic-auth (login/password), there are two more convenient options:
 
-### 1) OAuth в браузере — GitHub / Google
+### 1) Browser OAuth — GitHub / Google
 
-Зарегистрируй приложение в одной из консолей (или обеих):
+Register an app in one of the consoles (or both):
 
 - **GitHub:** https://github.com/settings/developers → "New OAuth App".
   Callback URL: `https://your-domain.tld/api/auth/oauth/github/callback`
 - **Google:** https://console.cloud.google.com/apis/credentials → OAuth client.
   Redirect URI: `https://your-domain.tld/api/auth/oauth/google/callback`
 
-Впиши `OAUTH_*_CLIENT_ID/SECRET` в `ai-chat-ui/.env.local`. **Обязательно**
-поставь `ALLOWED_EMAILS=твой@email.com` — иначе любой человек с гитхабом
-получит доступ. Перезапусти `ai-chat-ui`. На `/login` появятся кнопки.
+Put `OAUTH_*_CLIENT_ID/SECRET` into `ai-chat-ui/.env.local`. **Be sure** to set
+`ALLOWED_EMAILS=you@email.com` — otherwise anyone with a GitHub account gets
+access. Restart `ai-chat-ui`. Buttons will appear on `/login`.
 
-### 2) Десктопный CLI — авторизация через Device Flow
+### 2) Desktop CLI — auth via Device Flow
 
-На своём компе:
+On your machine:
 
 ```bash
-# один раз — установка
+# one-time install
 npm install -g /path/to/agent-stack/cli
 
-# логин
+# login
 agent-stack login --server https://your-domain.tld
 ```
 
-CLI распечатает короткий код и URL, ты открываешь в браузере, логинишься
-(GitHub/Google/пароль — что настроил), вводишь код. CLI получает
-долгоживущий JWT-токен (90 дней) и сохраняет его в
-`~/.config/agent-stack/token.json` с правами `600`.
+The CLI prints a short code and a URL; you open it in the browser, log in
+(GitHub/Google/password — whatever you configured), and enter the code. The CLI
+receives a long-lived JWT token (90 days) and saves it to
+`~/.config/agent-stack/token.json` with `600` permissions.
 
-Дальше любая OpenAI-совместимая тулза видит твой VPS как OpenAI:
+After that, any OpenAI-compatible tool sees your VPS as OpenAI:
 
 ```bash
 eval "$(agent-stack env)"
 # OPENAI_BASE_URL=https://your-domain.tld/_kp/v1
-# OPENAI_API_KEY=<твой JWT>
+# OPENAI_API_KEY=<your JWT>
 ```
 
-В **Cursor / Cline / Antigravity / Roo Code**:
+In **Cursor / Cline / Antigravity / Roo Code**:
 
 ```
 Base URL: https://your-domain.tld/_kp/v1
-API Key:  токен из ~/.config/agent-stack/token.json
-Model:    то же, что KIMI_MODEL на сервере
+API Key:  the token from ~/.config/agent-stack/token.json
+Model:    same as KIMI_MODEL on the server
 ```
 
-**Отзыв доступа:** меняешь `JWT_SECRET` в `kimi-mcp-proxy/.env` →
-`systemctl restart kimi-mcp-proxy` — все ранее выписанные device-токены
-становятся невалидными мгновенно.
+**Revoking access:** change `JWT_SECRET` in `kimi-mcp-proxy/.env` →
+`systemctl restart kimi-mcp-proxy` — all previously issued device tokens become
+invalid instantly.
 
-Подробнее: [`cli/README.md`](cli/README.md).
+More: [`cli/README.md`](cli/README.md).
 
 ---
 
-## SSH-вход на VPS
+## SSH access to the VPS
 
-Полный мануал: [`deploy/ssh/README.md`](deploy/ssh/README.md). TL;DR:
+Full guide: [`deploy/ssh/README.md`](deploy/ssh/README.md). TL;DR:
 
 ```bash
-# у себя на компе
+# on your machine
 ssh-keygen -t ed25519 -f ~/.ssh/agent-stack
 ssh-copy-id -i ~/.ssh/agent-stack.pub root@VPS_IP
 
-# alias в ~/.ssh/config
+# alias in ~/.ssh/config
 Host agent-vps
     HostName VPS_IP
     User root
     IdentityFile ~/.ssh/agent-stack
 
-# теперь
+# now
 ssh agent-vps
 ```
 
-После того как ключ работает — выключи парольный вход на VPS:
-`PasswordAuthentication no` в `/etc/ssh/sshd_config` → `systemctl restart ssh`.
+Once the key works — disable password login on the VPS:
+`PasswordAuthentication no` in `/etc/ssh/sshd_config` → `systemctl restart ssh`.
 
 ---
 
-## Структура репо
+## Repo structure
 
 ```
 agent-stack/
-├── kimi-mcp-proxy/         # Express + MCP бэкенд, порт 3001
+├── kimi-mcp-proxy/         # Express + MCP backend, port 3001
 │   ├── src/                # server.js, agent-sessions.js, mcps.js, ...
-│   ├── hooks/              # хуки безопасности (bash-guard)
-│   ├── public/             # встроенный мини-UI
-│   ├── .env.example        # ← шаблон, заполняешь и сохраняешь как .env
+│   ├── hooks/              # security hooks (bash-guard)
+│   ├── public/             # built-in mini UI
+│   ├── .env.example        # <- template; fill in and save as .env
 │   ├── Dockerfile
 │   └── package.json
-├── ai-chat-ui/             # Next.js фронт, порт 3002
-│   ├── app/                # App Router страницы
+├── ai-chat-ui/             # Next.js frontend, port 3002
+│   ├── app/                # App Router pages
 │   ├── components/
 │   ├── lib/
 │   ├── middleware.ts       # basic-auth
-│   ├── .env.local.example  # ← шаблон, заполняешь и сохраняешь как .env.local
+│   ├── .env.local.example  # <- template; fill in and save as .env.local
 │   └── package.json
-├── cli/                    # десктопный CLI (OAuth Device Flow)
-│   ├── agent-stack.mjs     # сам бинарь
+├── cli/                    # desktop CLI (OAuth Device Flow)
+│   ├── agent-stack.mjs     # the binary itself
 │   └── README.md
 ├── deploy/
-│   ├── install.sh          # one-shot установка на свежий VPS
-│   ├── push-to-github.sh   # пушит репо на GitHub
-│   ├── systemd/            # юниты для kimi-mcp-proxy и ai-chat-ui
-│   ├── caddy/              # Caddyfile-snippet с HTTPS + reverse_proxy
-│   └── ssh/                # инструкция по SSH-ключам
-├── .gitignore              # секреты, ключи, чаты, бэкапы — в репо НЕ попадают
-└── README.md               # ты здесь
+│   ├── install.sh          # one-shot install on a fresh VPS
+│   ├── push-to-github.sh   # pushes the repo to GitHub
+│   ├── systemd/            # units for kimi-mcp-proxy and ai-chat-ui
+│   ├── caddy/              # Caddyfile snippet with HTTPS + reverse_proxy
+│   └── ssh/                # SSH key instructions
+├── .gitignore              # secrets, keys, chats, backups stay OUT of the repo
+└── README.md               # you are here
 ```
 
 ---
 
-## Безопасность ключей
+## Key & secret hygiene
 
-Все секреты живут в `.env` / `.env.local` и **никогда** не попадают в репозиторий.
-`.gitignore` ловит:
+All secrets live in `.env` / `.env.local` and **never** land in the repository.
+`.gitignore` catches:
 
-- `.env`, `.env.*`, `*.env*` (кроме `.env.example`, `.env.local.example`)
+- `.env`, `.env.*`, `*.env*` (except `.env.example`, `.env.local.example`)
 - `*.key`, `*.pem`, `id_rsa*`, `id_ed25519*`, `authorized_keys`
 - `.tg_token`, `secrets.json`, `credentials.json`, `service-account*.json`
-- история чатов: `agent-sessions.json*`, `chat-store/`, `kimi-chats/`
-- состояние автоматизаций: `automations-runs.jsonl`,
-  `automations-schedules.json`, `telegram-state.json`
+- chat history: `agent-sessions.json*`, `chat-store/`, `kimi-chats/`
+- automation state: `automations-runs.jsonl`, `automations-schedules.json`,
+  `telegram-state.json`
 
-Если случайно закоммитил секрет — **отзови ключ у провайдера** (новый секрет
-важнее, чем чистая история git) и переиздай.
+If you accidentally commit a secret — **revoke the key at the provider** (a fresh
+secret matters more than a clean git history) and re-issue it.
 
 ---
 
-## Лицензия
+## License
 
-MIT — см. [LICENSE](LICENSE).
+MIT — see [LICENSE](LICENSE).
