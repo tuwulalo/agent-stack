@@ -1,0 +1,12 @@
+{
+  "name": "agent-stack-cli",
+  "version": "0.1.0",
+  "description": "Десктопный CLI для входа в self-hosted agent-stack на VPS",
+  "type": "module",
+  "bin": {
+    "agent-stack": "./agent-stack.mjs"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

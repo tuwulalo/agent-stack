@@ -1,0 +1,14 @@
+[Unit]
+Description=Kimi MCP Proxy
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/kimi-mcp-proxy
+EnvironmentFile=/opt/kimi-mcp-proxy/.env
+ExecStart=/usr/bin/npm start
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,9 @@
+services:
+  kimi-mcp-proxy:
+    build: .
+    container_name: kimi-mcp-proxy
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "${PORT:-3000}:3000"

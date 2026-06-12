@@ -1,0 +1,16 @@
+[Unit]
+Description=AI Chat UI (Next.js frontend for agent-stack)
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/agent-stack/ai-chat-ui
+EnvironmentFile=-/opt/agent-stack/ai-chat-ui/.env.local
+Environment=PORT=3002
+Environment=NODE_ENV=production
+ExecStart=/usr/bin/npm start
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
