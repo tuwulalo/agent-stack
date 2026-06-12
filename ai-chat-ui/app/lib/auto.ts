@@ -34,7 +34,7 @@ export async function autoRun({ prompt, context, force, agentId, chatId, signal,
     const detail = await res.text().catch(() => '')
     throw new Error(`HTTP ${res.status}${detail ? ` — ${detail.slice(0, 250)}` : ''}`)
   }
-  if (!res.body) throw new Error('Пустой ответ от роутера')
+  if (!res.body) throw new Error('Empty response from the router')
 
   const reader = res.body.getReader()
   const decoder = new TextDecoder()

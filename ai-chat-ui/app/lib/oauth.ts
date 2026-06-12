@@ -1,6 +1,6 @@
 /**
- * OAuth2 helpers — провайдеры и обмен code → user email.
- * Node runtime (НЕ Edge): нужен сетевой fetch к провайдерам.
+ * OAuth2 helpers — providers and the code → user email exchange.
+ * Node runtime (NOT Edge): needs network fetch to the providers.
  */
 
 export type Provider = 'github' | 'google'
@@ -12,7 +12,7 @@ export interface ProviderConfig {
   tokenUrl: string
   userInfoUrl: string
   scope: string
-  /** Извлекает email из ответа userInfoUrl (для GitHub нужен дополнительный запрос за emails). */
+  /** Extracts the email from the userInfoUrl response (GitHub needs an extra request for emails). */
   extractEmail: (userInfo: any, accessToken: string) => Promise<string | null>
 }
 
@@ -25,7 +25,7 @@ const GITHUB: ProviderConfig = {
   scope: 'read:user user:email',
   extractEmail: async (userInfo, accessToken) => {
     if (userInfo?.email) return String(userInfo.email).toLowerCase()
-    // GitHub скрывает приватный email — берём из /user/emails
+    // GitHub hides private emails — fetch from /user/emails instead
     const r = await fetch('https://api.github.com/user/emails', {
       headers: {
         Authorization: `Bearer ${accessToken}`,
@@ -61,14 +61,14 @@ export function getProvider(name: string): ProviderConfig | null {
 }
 
 export function getRedirectUri(provider: Provider, req: Request): string {
-  // OAUTH_REDIRECT_BASE задаёт публичный origin (HTTPS), нужный для регистрации
-  // в GitHub/Google. Если не задан — берём из заголовков (полезно в dev).
+  // OAUTH_REDIRECT_BASE sets the public origin (HTTPS) required for the
+  // GitHub/Google app registration. If unset, derive it from headers (handy in dev).
   const base = process.env.OAUTH_REDIRECT_BASE
     || (req.headers.get('x-forwarded-proto') || 'https') + '://' + (req.headers.get('host') || '')
   return `${base.replace(/\/$/, '')}/api/auth/oauth/${provider}/callback`
 }
 
-/** POST x-www-form-urlencoded на token endpoint, возвращает access_token. */
+/** POST x-www-form-urlencoded to the token endpoint, returns the access_token. */
 export async function exchangeCodeForToken(
   provider: ProviderConfig,
   code: string,
@@ -107,7 +107,7 @@ export async function fetchUserEmail(
   return provider.extractEmail(info, accessToken)
 }
 
-/** Email-allowlist из .env: ALLOWED_EMAILS=a@x.com,b@y.com (пусто = деним всех). */
+/** Email allowlist from .env: ALLOWED_EMAILS=a@x.com,b@y.com (empty = deny everyone). */
 export function isEmailAllowed(email: string): boolean {
   const raw = process.env.ALLOWED_EMAILS || ''
   const list = raw.split(',').map((s) => s.trim().toLowerCase()).filter(Boolean)
@@ -115,7 +115,7 @@ export function isEmailAllowed(email: string): boolean {
   return list.includes(email.toLowerCase())
 }
 
-/** Криптостойкая случайная строка для OAuth state. */
+/** Cryptographically strong random string for the OAuth state. */
 export function randomState(): string {
   const buf = new Uint8Array(24)
   crypto.getRandomValues(buf)

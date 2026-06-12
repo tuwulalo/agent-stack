@@ -9,15 +9,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, error: 'server-misconfigured' }, { status: 500 })
   }
 
-  // 1. Юзер должен быть залогинен в UI (basic-auth ИЛИ OAuth).
+  // 1. The user must be logged in to the UI (basic auth OR OAuth).
   const sessionToken = req.cookies.get(SESSION_COOKIE)?.value
   const session = sessionToken ? await verifySession(sessionToken, secret) : null
   if (!session) {
     return NextResponse.json({ ok: false, error: 'not-authenticated' }, { status: 401 })
   }
 
-  // 2. user_code → пересылаем в proxy /v1/auth/device/approve вместе с
-  //    email-ом залогиненного юзера и shared-секретом.
+  // 2. user_code → forward to the proxy /v1/auth/device/approve along with
+  //    the logged-in user's email and the shared secret.
   const body = (await req.json().catch(() => ({}))) as { user_code?: string }
   const userCode = String(body.user_code || '').trim().toUpperCase()
   if (!userCode) {

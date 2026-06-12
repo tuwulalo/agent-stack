@@ -60,19 +60,19 @@ export function AskUserBlock({ payload, answered, onSubmit }: Props) {
       const o = (other[qi] || '').trim()
       return o ? [...labels, o] : labels
     })
-    const lines: string[] = ['Ответы пользователя:', '']
+    const lines: string[] = ['User answers:', '']
     questions.forEach((q, qi) => {
       const header = q.header || q.question
       const ans = byQuestion[qi]
       if (ans.length === 0) {
-        lines.push(`- **${header}**: _(пропущено)_`)
+        lines.push(`- **${header}**: _(skipped)_`)
       } else if (ans.length === 1) {
-        lines.push(`- **${header}**: «${ans[0]}»`)
+        lines.push(`- **${header}**: "${ans[0]}"`)
       } else {
-        lines.push(`- **${header}**: ${ans.map((a) => '«' + a + '»').join(', ')}`)
+        lines.push(`- **${header}**: ${ans.map((a) => '"' + a + '"').join(', ')}`)
       }
     })
-    lines.push('', 'Продолжай с этими решениями.')
+    lines.push('', 'Continue with these decisions.')
     onSubmit(lines.join('\n'), byQuestion)
   }
 
@@ -81,10 +81,10 @@ export function AskUserBlock({ payload, answered, onSubmit }: Props) {
       <div className="px-3.5 py-2 flex items-center gap-2 border-b border-violet-400/15 bg-violet-500/[0.06]">
         <MessageCircleQuestion className="w-4 h-4 text-violet-300" />
         <div className="text-[12px] font-medium text-white/90 flex-1">
-          {isLocked ? 'Вопросы (ответ отправлен)' : 'Агент спрашивает'}
+          {isLocked ? 'Questions (answer sent)' : 'The agent is asking'}
         </div>
         <span className="text-[10px] text-white/40 tabular-nums">
-          {questions.length} вопрос{questions.length === 1 ? '' : questions.length < 5 ? 'а' : 'ов'}
+          {questions.length} question{questions.length === 1 ? '' : 's'}
         </span>
       </div>
 
@@ -146,7 +146,7 @@ export function AskUserBlock({ payload, answered, onSubmit }: Props) {
                   <input
                     value={other[qi]}
                     onChange={(e) => setOther((p) => p.map((x, i) => (i === qi ? e.target.value : x)))}
-                    placeholder="…или впиши свой ответ"
+                    placeholder="…or type your own answer"
                     className="w-full px-2.5 py-1.5 rounded-md bg-black/30 border border-white/[0.06] text-[12px] text-white/85 placeholder:text-white/30 outline-none focus:border-violet-400/40 transition"
                   />
                 )}
@@ -159,7 +159,7 @@ export function AskUserBlock({ payload, answered, onSubmit }: Props) {
       {!isLocked && (
         <div className="flex items-center gap-2 px-3.5 py-2.5 border-t border-violet-400/15 bg-black/20">
           <span className="text-[10.5px] text-white/40">
-            ответ улетит как новый ход в той же сессии (--resume)
+            your answer goes back as a new turn in the same session (--resume)
           </span>
           <span className="flex-1" />
           <button
@@ -168,7 +168,7 @@ export function AskUserBlock({ payload, answered, onSubmit }: Props) {
             className="px-3 py-1.5 rounded-md text-[12px] bg-gradient-to-b from-violet-500 to-indigo-600 text-white hover:from-violet-400 hover:to-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed transition flex items-center gap-1.5"
           >
             <Send className="w-3.5 h-3.5" />
-            Отправить
+            Send
           </button>
         </div>
       )}

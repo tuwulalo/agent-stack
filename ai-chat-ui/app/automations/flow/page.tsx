@@ -8,12 +8,12 @@ import { listAgentSessions, type AgentSession } from '../../lib/agent-sessions'
 import { TweaksPanel } from '../../components/TweaksPanel'
 
 /**
- * «Поток» — живая инфографика как оркестраторы общаются с воркерами.
- * Для каждой root-сессии рисуем swimlane: оркестратор сверху, его
- * воркеры внизу, между ними анимированные стрелки (фиолетовые бегущие
- * пунктиры — активные, зелёные тонкие — завершённые). Auto-refresh 4с.
+ * "Flow" — a live infographic of how orchestrators talk to workers.
+ * For each root session we draw a swimlane: the orchestrator on top, its
+ * workers below, with animated arrows between them (violet running
+ * dashes — active, thin green — finished). Auto-refresh every 4s.
  *
- * Без хардкода: всё на основе живых сессий, parentSessionId связи.
+ * No hardcoding: everything is based on live sessions and parentSessionId links.
  */
 
 interface Lane {
@@ -21,7 +21,7 @@ interface Lane {
   children: AgentSession[]
   parentLive: boolean
   parentDone: boolean
-  // совокупно — есть ли хотя бы один активный воркер
+  // aggregate — is at least one worker active
   anyChildLive: boolean
 }
 
@@ -32,7 +32,7 @@ function StatusBadge({ s }: { s: AgentSession }) {
     return (
       <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-[var(--zek-purple-soft)] text-[var(--zek-purple)] font-mono text-[10px] uppercase tracking-wider">
         <Activity className="w-2.5 h-2.5 animate-pulse" />
-        идёт
+        running
       </span>
     )
   }
@@ -40,14 +40,14 @@ function StatusBadge({ s }: { s: AgentSession }) {
     return (
       <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-[var(--zek-accent-soft)] text-[var(--zek-accent)] font-mono text-[10px] uppercase tracking-wider">
         <CheckCircle2 className="w-2.5 h-2.5" />
-        готов
+        done
       </span>
     )
   }
   return (
     <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-white/[0.05] text-white/40 font-mono text-[10px] uppercase tracking-wider">
       <Clock className="w-2.5 h-2.5" />
-      ждёт
+      waiting
     </span>
   )
 }
@@ -98,7 +98,7 @@ function LaneCard({ lane }: { lane: Lane }) {
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-baseline gap-2 mb-1">
-            <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-[var(--zek-text-3)]">оркестратор</span>
+            <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-[var(--zek-text-3)]">orchestrator</span>
             <span className="font-mono text-[10px] text-[var(--zek-text-3)]">·</span>
             <span className="font-semibold text-[var(--zek-text)] text-[15px] tracking-tight">{parentIdent.name}</span>
             <span className="text-[var(--zek-text-3)] text-[12px] font-mono">{parentIdent.domain}</span>
@@ -112,7 +112,7 @@ function LaneCard({ lane }: { lane: Lane }) {
               className="text-[12px] text-[var(--zek-text)] leading-snug line-clamp-2 px-2.5 py-1.5 rounded border border-[var(--zek-line)] bg-black/30"
               title={lane.parent.lastSummary}
             >
-              <span className="font-mono text-[9px] uppercase tracking-wider text-[var(--zek-text-3)] mr-1.5">итог:</span>
+              <span className="font-mono text-[9px] uppercase tracking-wider text-[var(--zek-text-3)] mr-1.5">summary:</span>
               {lane.parent.lastSummary}
             </div>
           )}
@@ -121,7 +121,7 @@ function LaneCard({ lane }: { lane: Lane }) {
               href={`/automations?session=${lane.parent.id}`}
               className="text-[var(--zek-accent)] hover:text-[var(--zek-text)] transition"
             >
-              ↪ открыть
+              ↪ open
             </Link>
             <span>·</span>
             <span>{lane.parent.turns} turn{lane.parent.turns === 1 ? '' : 's'}</span>
@@ -175,7 +175,7 @@ function LaneCard({ lane }: { lane: Lane }) {
                     href={`/automations?session=${c.id}`}
                     className="block mt-1.5 text-center font-mono text-[9.5px] text-[var(--zek-accent)] hover:text-[var(--zek-text)] transition"
                   >
-                    ↪ открыть
+                    ↪ open
                   </Link>
                 </div>
               )
@@ -184,7 +184,7 @@ function LaneCard({ lane }: { lane: Lane }) {
         </div>
       ) : (
         <div className="px-5 py-3 text-center font-mono text-[10px] text-[var(--zek-text-3)] uppercase tracking-wider">
-          без воркеров · соло-задача
+          no workers · solo task
         </div>
       )}
     </div>
@@ -209,7 +209,7 @@ export default function FlowPage() {
     return () => { cancelled = true; clearInterval(id) }
   }, [])
 
-  /** Построить swimlanes — только root-сессии (parent=null) с их воркерами. */
+  /** Build swimlanes — only root sessions (parent=null) with their workers. */
   const lanes: Lane[] = useMemo(() => {
     const orchestrators = sessions.filter((s) => !s.parentSessionId)
     return orchestrators
@@ -227,7 +227,7 @@ export default function FlowPage() {
         }
       })
       .sort((a, b) => {
-        // активные сверху, потом по lastUsedAt
+        // active ones first, then by lastUsedAt
         const aActive = a.parentLive || a.anyChildLive ? 1 : 0
         const bActive = b.parentLive || b.anyChildLive ? 1 : 0
         if (aActive !== bActive) return bActive - aActive
@@ -252,17 +252,17 @@ export default function FlowPage() {
       <header className="h-12 border-b border-[var(--zek-line)] flex items-center px-5 gap-6 sticky top-0 z-20 bg-[var(--zek-bg)]">
         <Link href="/automations" className="text-[var(--zek-text-2)] hover:text-[var(--zek-text)] transition flex items-center gap-1.5 text-[13px]">
           <ArrowLeft className="w-3.5 h-3.5" />
-          к автоматам
+          to automations
         </Link>
         <span className="flex items-center gap-2.5">
-          <span className="w-[18px] h-[18px] rounded grid place-items-center font-mono text-[11px] font-bold" style={{ background: 'var(--zek-accent)', color: '#062014' }}>з</span>
+          <span className="w-[18px] h-[18px] rounded grid place-items-center font-mono text-[11px] font-bold" style={{ background: 'var(--zek-accent)', color: '#062014' }}>z</span>
           <span className="font-mono text-[13px] tracking-wider">
-            зек <span className="text-[var(--zek-text-3)]">/ поток</span>
+            zek <span className="text-[var(--zek-text-3)]">/ flow</span>
           </span>
         </span>
         <span className="flex-1" />
         <Link href="/automations/squad" className="font-mono text-[11px] text-[var(--zek-text-2)] hover:text-[var(--zek-text)] transition">
-          → отряд
+          → squad
         </Link>
       </header>
 
@@ -270,20 +270,20 @@ export default function FlowPage() {
         <div className="flex items-end justify-between mb-7 gap-4 flex-wrap">
           <div>
             <div className="font-mono text-[11px] uppercase tracking-[0.12em] text-[var(--zek-text-3)] mb-1.5">
-              поток · live · обновление 4с
+              flow · live · refreshes every 4s
             </div>
-            <h1 className="text-[28px] font-semibold tracking-tight m-0">Как они общаются</h1>
+            <h1 className="text-[28px] font-semibold tracking-tight m-0">How they talk to each other</h1>
           </div>
           <div className="flex gap-5 font-mono text-xs text-[var(--zek-text-2)]">
-            <span><b className="text-[var(--zek-text)] font-medium">{stats.lanes}</b> оркестратор{stats.lanes === 1 ? '' : 'ов'}</span>
-            <span><b className="text-[var(--zek-purple)] font-medium">{stats.live}</b> идут прямо сейчас</span>
-            <span><b className="text-[var(--zek-text)] font-medium">{stats.children}</b> воркер{stats.children === 1 ? '' : 'ов'} суммарно</span>
+            <span><b className="text-[var(--zek-text)] font-medium">{stats.lanes}</b> orchestrator{stats.lanes === 1 ? '' : 's'}</span>
+            <span><b className="text-[var(--zek-purple)] font-medium">{stats.live}</b> running right now</span>
+            <span><b className="text-[var(--zek-text)] font-medium">{stats.children}</b> worker{stats.children === 1 ? '' : 's'} total</span>
           </div>
         </div>
 
         {lanes.length === 0 ? (
           <div className="text-center py-20 text-[var(--zek-text-3)] font-mono text-[12px] uppercase tracking-wider">
-            пока никто никого не позвал · зайди в /automations и запусти оркестратор
+            no one has called anyone yet · go to /automations and start an orchestrator
           </div>
         ) : (
           <div className="space-y-5">
@@ -300,10 +300,10 @@ export default function FlowPage() {
 function formatRel(ts: number): string {
   const ageMs = Date.now() - ts
   const m = Math.floor(ageMs / 60_000)
-  if (m < 1) return 'сейчас'
-  if (m < 60) return `${m}м назад`
+  if (m < 1) return 'just now'
+  if (m < 60) return `${m}m ago`
   const h = Math.floor(m / 60)
-  if (h < 24) return `${h}ч назад`
+  if (h < 24) return `${h}h ago`
   const d = Math.floor(h / 24)
-  return `${d}д назад`
+  return `${d}d ago`
 }

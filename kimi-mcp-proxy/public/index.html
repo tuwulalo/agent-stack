@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="ru">
+<html lang="en">
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -11,13 +11,13 @@
       <section class="hero">
         <div>
           <p class="eyebrow">Kimi API Gateway</p>
-          <h1>Прокси-консоль для Roo Code, OpenClowe и MCP</h1>
-          <p class="lead">Проверь OpenAI-compatible endpoint перед подключением клиентов. Секреты вводятся только локально в браузере и не сохраняются на сервере.</p>
+          <h1>Proxy console for Roo Code, OpenClowe and MCP</h1>
+          <p class="lead">Test the OpenAI-compatible endpoint before connecting clients. Secrets are entered only locally in the browser and are never stored on the server.</p>
         </div>
         <div class="status-card">
           <span class="status-dot"></span>
           <div>
-            <strong id="healthText">Проверка сервера...</strong>
+            <strong id="healthText">Checking the server...</strong>
             <small id="modelText">model: unknown</small>
           </div>
         </div>
@@ -27,21 +27,21 @@
         <form id="chatForm" class="composer">
           <label>
             Proxy API key
-            <input id="proxyKey" type="password" placeholder="Bearer key из .env">
+            <input id="proxyKey" type="password" placeholder="Bearer key from .env">
           </label>
           <label>
-            Сообщение
-            <textarea id="prompt" rows="7" placeholder="Например: объясни, как подключить этот endpoint в Roo Code"></textarea>
+            Message
+            <textarea id="prompt" rows="7" placeholder="For example: explain how to connect this endpoint in Roo Code"></textarea>
           </label>
-          <button type="submit">Отправить запрос</button>
+          <button type="submit">Send request</button>
         </form>
 
         <article class="response">
           <div class="response-header">
-            <span>Ответ Kimi</span>
-            <button id="copyButton" type="button">Скопировать</button>
+            <span>Kimi response</span>
+            <button id="copyButton" type="button">Copy</button>
           </div>
-          <pre id="output">Готов к запросу.</pre>
+          <pre id="output">Ready for a request.</pre>
         </article>
       </section>
     </main>

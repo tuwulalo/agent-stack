@@ -14,10 +14,10 @@ interface Props {
 }
 
 const SUGGESTIONS = [
-  { title: 'Объясни код',     prompt: 'Объясни этот фрагмент TypeScript: ```ts\n\n```' },
-  { title: 'Напиши сервис',   prompt: 'Напиши Express endpoint POST /api/widgets с валидацией zod и тестом на Vitest.' },
-  { title: 'SQL-запрос',      prompt: 'Сформируй SQL для PostgreSQL: top-10 пользователей по сумме заказов за последние 30 дней.' },
-  { title: 'Команда Hermes',  prompt: 'Подскажи команду hermes для запуска агента в режиме gateway с фоллбеком на openrouter.' },
+  { title: 'Explain code',    prompt: 'Explain this TypeScript snippet: ```ts\n\n```' },
+  { title: 'Write a service', prompt: 'Write an Express endpoint POST /api/widgets with zod validation and a Vitest test.' },
+  { title: 'SQL query',       prompt: 'Write SQL for PostgreSQL: top 10 users by total order amount over the last 30 days.' },
+  { title: 'Hermes command',  prompt: 'Suggest a hermes command to start the agent in gateway mode with an openrouter fallback.' },
 ]
 
 export function ChatView({ session, busy, onSuggestion, onRegenerate }: Props) {
@@ -49,8 +49,8 @@ export function ChatView({ session, busy, onSuggestion, onRegenerate }: Props) {
           <div className="empty-title">Hermes × Kimi</div>
           <div className="empty-subtitle">
             {session
-              ? `Модель ${MODELS.find(m => m.id === session.model)?.label || session.model}. С чего начнём?`
-              : 'Создай новый чат, чтобы начать.'}
+              ? `Model ${MODELS.find(m => m.id === session.model)?.label || session.model}. Where shall we start?`
+              : 'Create a new chat to get started.'}
           </div>
           {session && (
             <div className="suggestions">
@@ -72,7 +72,7 @@ export function ChatView({ session, busy, onSuggestion, onRegenerate }: Props) {
             const isStreaming = busy && isLastAssistant
             return (
               <div key={m.id} className={`message ${m.role}`}>
-                <div className="message-avatar">{m.role === 'user' ? 'Вы' : 'AI'}</div>
+                <div className="message-avatar">{m.role === 'user' ? 'You' : 'AI'}</div>
                 <div className="message-body">
                   <div className="message-meta">
                     <span className="message-role">{m.role === 'user' ? 'You' : 'Kimi'}</span>
@@ -81,7 +81,7 @@ export function ChatView({ session, busy, onSuggestion, onRegenerate }: Props) {
                     {m.role === 'assistant'
                       ? (m.content
                           ? <Markdown text={m.content} />
-                          : (isStreaming ? null : <em style={{ color: 'var(--text-tertiary)' }}>пусто</em>))
+                          : (isStreaming ? null : <em style={{ color: 'var(--text-tertiary)' }}>empty</em>))
                       : <div style={{ whiteSpace: 'pre-wrap' }}>{m.content}</div>}
                     {isStreaming && <span className="streaming-cursor" />}
                   </div>
@@ -89,12 +89,12 @@ export function ChatView({ session, busy, onSuggestion, onRegenerate }: Props) {
                     <div className="message-actions">
                       <button className="action-btn" onClick={() => onCopyMessage(m)}>
                         {copiedId === m.id ? <CheckIcon /> : <CopyIcon />}
-                        {copiedId === m.id ? 'Скопировано' : 'Копировать'}
+                        {copiedId === m.id ? 'Copied' : 'Copy'}
                       </button>
                       {isLastAssistant && (
                         <button className="action-btn" onClick={onRegenerate}>
                           <RefreshIcon />
-                          Регенерировать
+                          Regenerate
                         </button>
                       )}
                     </div>

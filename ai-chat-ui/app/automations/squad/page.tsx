@@ -15,15 +15,15 @@ import { listAgentSessions, type AgentSession } from '../../lib/agent-sessions'
 import { TweaksPanel } from '../../components/TweaksPanel'
 
 /**
- * «Отряд» — всё runtime-состояние берётся из живых серверных сессий
- * (auto-refresh каждые 4с). Никаких демо-данных:
- *   • ROSTER_IDENTITY → только имя/роль/домен/traits/defaultPrompt
- *   • buildRosterFromSessions() → реальные status/turns/runtime/lastTask
- *   • buildConnectionsFromSessions() → реальные parent→child дуги между маскотами
+ * "Squad" — all runtime state comes from live server sessions
+ * (auto-refresh every 4s). No demo data:
+ *   • ROSTER_IDENTITY → only name/role/domain/traits/defaultPrompt
+ *   • buildRosterFromSessions() → real status/turns/runtime/lastTask
+ *   • buildConnectionsFromSessions() → real parent→child arcs between mascots
  *
- * Клик «↪ позвать в автомат»:
- *   • если у маскота уже есть свежая сессия → открыть её (?session=<id>)
- *   • если нет → открыть /automations с pre-filled промптом под этот домен
+ * Clicking "↪ send to automations":
+ *   • if the mascot already has a recent session → open it (?session=<id>)
+ *   • if not → open /automations with a pre-filled prompt for this domain
  */
 
 function StatusDot({ status }: { status: MascotStatus }) {
@@ -156,14 +156,14 @@ export default function SquadPage() {
   const [serverSessions, setServerSessions] = useState<AgentSession[]>([])
   const gridRef = useRef<HTMLDivElement>(null)
 
-  // Подтянуть сессии + auto-refresh каждые 4с пока вкладка видна
+  // Pull sessions + auto-refresh every 4s while the tab is visible
   useEffect(() => {
     let cancelled = false
     const pull = async () => {
       try {
         const s = await listAgentSessions(80)
         if (!cancelled) setServerSessions(s)
-      } catch { /* offline / 502 — продолжаем с тем что есть */ }
+      } catch { /* offline / 502 — keep going with what we have */ }
     }
     void pull()
     const id = setInterval(() => {
@@ -172,7 +172,7 @@ export default function SquadPage() {
     return () => { cancelled = true; clearInterval(id) }
   }, [])
 
-  // Live-ростер и live-связи из реальных сессий (мемоизируем по lastUsedAt-сумме)
+  // Live roster and live links from real sessions (memoized by lastUsedAt fingerprint)
   const sessionFingerprint = useMemo(
     () => serverSessions.map((s) => `${s.id}:${s.turns}:${s.lastUsedAt}`).join('|'),
     [serverSessions],
@@ -187,8 +187,8 @@ export default function SquadPage() {
     return c
   }, [roster])
 
-  /** Открыть автомат: если у маскота уже есть свежая сессия → continue её;
-      иначе — открыть /automations с pre-filled промптом под этот домен. */
+  /** Open automations: if the mascot already has a recent session → continue it;
+      otherwise — open /automations with a pre-filled prompt for this domain. */
   const openInAutomations = useCallback((m: MascotMeta) => {
     if (m.sessionId) {
       window.location.href = `/automations?session=${m.sessionId}`
@@ -210,17 +210,17 @@ export default function SquadPage() {
       <header className="h-12 border-b border-[var(--zek-line)] flex items-center px-5 gap-6 sticky top-0 z-20 bg-[var(--zek-bg)]">
         <Link href="/automations" className="text-[var(--zek-text-2)] hover:text-[var(--zek-text)] transition flex items-center gap-1.5 text-[13px]">
           <ArrowLeft className="w-3.5 h-3.5" />
-          к автоматам
+          to automations
         </Link>
         <span className="flex items-center gap-2.5">
           <span
             className="w-[18px] h-[18px] rounded grid place-items-center font-mono text-[11px] font-bold"
             style={{ background: 'var(--zek-accent)', color: '#062014' }}
           >
-            з
+            z
           </span>
           <span className="font-mono text-[13px] tracking-wider">
-            зек <span className="text-[var(--zek-text-3)]">/ отряд</span>
+            zek <span className="text-[var(--zek-text-3)]">/ squad</span>
           </span>
         </span>
       </header>
@@ -229,22 +229,22 @@ export default function SquadPage() {
         <div className="flex items-end justify-between mb-7 gap-6 flex-wrap">
           <div>
             <div className="font-mono text-[11px] uppercase tracking-[0.12em] text-[var(--zek-text-3)] mb-1.5">
-              отряд · 10 саб-агентов
+              squad · 10 sub-agents
             </div>
-            <h1 className="text-[28px] font-semibold tracking-tight m-0">Кого позовём в этот раз?</h1>
+            <h1 className="text-[28px] font-semibold tracking-tight m-0">Who are we calling this time?</h1>
           </div>
           <div className="flex gap-6 font-mono text-xs text-[var(--zek-text-2)] items-center flex-wrap">
             <span className="flex items-center gap-1.5">
               <StatusDot status="active" />
-              <b className="text-[var(--zek-text)] font-medium">{counts.active}</b> идут
+              <b className="text-[var(--zek-text)] font-medium">{counts.active}</b> running
             </span>
             <span className="flex items-center gap-1.5">
               <StatusDot status="ready" />
-              <b className="text-[var(--zek-text)] font-medium">{counts.ready}</b> готовы
+              <b className="text-[var(--zek-text)] font-medium">{counts.ready}</b> ready
             </span>
             <span className="flex items-center gap-1.5">
               <StatusDot status="idle" />
-              <b className="text-[var(--zek-text)] font-medium">{counts.idle}</b> ждут
+              <b className="text-[var(--zek-text)] font-medium">{counts.idle}</b> waiting
             </span>
             <button
               onClick={() => setLiveMode((v) => !v)}
@@ -259,7 +259,7 @@ export default function SquadPage() {
                 className={'w-1.5 h-1.5 rounded-full ' + (liveMode ? 'bg-[var(--zek-purple)]' : 'bg-[var(--zek-text-3)]')}
                 style={liveMode ? { animation: 'zek-pulse-dot 1.4s infinite' } : undefined}
               />
-              живой режим
+              live mode
             </button>
           </div>
         </div>
@@ -299,8 +299,8 @@ export default function SquadPage() {
               <div className="text-[var(--zek-text-2)] text-[13px] leading-[1.5]">
                 {active.role}.{' '}
                 {active.sessionId
-                  ? <>Последняя задача: <span className="text-[var(--zek-text)]">{active.lastTask}</span></>
-                  : <span className="text-[var(--zek-text-3)] italic">пока не звал — нажми «позвать в автомат» чтобы начать</span>
+                  ? <>Last task: <span className="text-[var(--zek-text)]">{active.lastTask}</span></>
+                  : <span className="text-[var(--zek-text-3)] italic">not called yet — hit "send to automations" to start</span>
                 }
               </div>
               <div className="flex gap-1.5 mt-2.5 flex-wrap">
@@ -317,7 +317,7 @@ export default function SquadPage() {
             </div>
             <div className="flex flex-col gap-1.5 font-mono text-[11px] text-[var(--zek-text-3)] text-right">
               <div>
-                статус ·{' '}
+                status ·{' '}
                 <b
                   style={{
                     color: active.status === 'active' ? 'var(--zek-purple)'
@@ -340,11 +340,11 @@ export default function SquadPage() {
                 className="mt-2 py-1.5 px-3.5 rounded-md text-xs font-semibold border-0 cursor-pointer inline-flex items-center gap-1.5 self-end"
                 style={{ background: 'var(--zek-accent)', color: '#062014', fontFamily: 'inherit' }}
                 title={active.sessionId
-                  ? `Открыть свежую сессию ${active.sessionId}`
-                  : `Новая сессия с дефолтным промптом для ${active.name}`}
+                  ? `Open the latest session ${active.sessionId}`
+                  : `New session with the default prompt for ${active.name}`}
               >
                 <Radio className="w-3 h-3" />
-                {active.sessionId ? '↪ продолжить' : '+ позвать в автомат'}
+                {active.sessionId ? '↪ continue' : '+ send to automations'}
               </button>
             </div>
           </div>
@@ -353,8 +353,8 @@ export default function SquadPage() {
         {/* hint footer */}
         <div className="mt-6 text-center font-mono text-[10px] text-[var(--zek-text-3)] uppercase tracking-[0.12em]">
           {serverSessions.length > 0
-            ? `${serverSessions.length} live-сессий · ${connections.length} parent→child связей · обновление каждые 4с`
-            : 'нет активных сессий · нажми на маскота → «позвать в автомат» чтобы начать'}
+            ? `${serverSessions.length} live sessions · ${connections.length} parent→child links · refreshes every 4s`
+            : 'no active sessions · click a mascot → "send to automations" to start'}
         </div>
       </div>
 

@@ -1,27 +1,27 @@
 #!/usr/bin/env node
 /**
- * agent-stack — десктопный CLI для self-hosted agent-stack.
+ * agent-stack — desktop CLI for a self-hosted agent-stack.
  *
  *   agent-stack login [--server https://your-domain.tld]
- *       Авторизуется через OAuth Device Flow на VPS.
- *       Сохраняет токен в ~/.config/agent-stack/token.json.
+ *       Authenticates against the VPS via the OAuth Device Flow.
+ *       Saves the token to ~/.config/agent-stack/token.json.
  *
  *   agent-stack whoami
- *       Показывает текущий сервер и токен (без секрета).
+ *       Shows the current server and token (secret masked).
  *
  *   agent-stack logout
- *       Удаляет локальный токен.
+ *       Deletes the local token.
  *
  *   agent-stack curl <path> [...args]
- *       curl-обёртка, подставляет Authorization из конфига.
- *       Пример: agent-stack curl /v1/models
+ *       curl wrapper that injects Authorization from the config.
+ *       Example: agent-stack curl /v1/models
  *
  *   agent-stack env
- *       Печатает export OPENAI_API_KEY=... OPENAI_BASE_URL=...
- *       Eval'ишь в шелле — IDE/SDK сразу видят твой сервер как OpenAI-совместимый.
- *       Пример:   eval "$(agent-stack env)"
+ *       Prints export OPENAI_API_KEY=... OPENAI_BASE_URL=...
+ *       Eval it in your shell — IDEs/SDKs instantly see your server as OpenAI-compatible.
+ *       Example:   eval "$(agent-stack env)"
  *
- * Зависимостей нет — чистый Node 18+ с встроенным fetch.
+ * No dependencies — pure Node 18+ with built-in fetch.
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -74,24 +74,24 @@ async function readLine(prompt) {
 }
 
 function deviceUrlBase(server) {
-  // server указывает на корень UI. Прокси висит за /_kp/ (Caddy snippet).
-  // Если юзер указал прямой адрес прокси — поддерживаем и его.
+  // server points at the UI root. The proxy lives behind /_kp/ (Caddy snippet).
+  // If the user passed the proxy address directly, support that too.
   const trimmed = server.replace(/\/$/, '');
   if (trimmed.endsWith('/_kp')) return trimmed;
-  // По умолчанию ходим через /_kp/.
+  // By default, go through /_kp/.
   return `${trimmed}/_kp`;
 }
 
 async function cmdLogin(opts) {
   const server = (opts.server || process.env.AGENT_STACK_SERVER || '').trim();
   if (!server) {
-    console.error('Укажи сервер: agent-stack login --server https://your-domain.tld');
+    console.error('Specify a server: agent-stack login --server https://your-domain.tld');
     process.exit(1);
   }
   const base = deviceUrlBase(server);
   const deviceName = opts.name || `${os.hostname()} / ${os.userInfo().username}`;
 
-  process.stdout.write('→ запрашиваю device code… ');
+  process.stdout.write('→ requesting device code… ');
   const r = await fetch(`${base}/v1/auth/device`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -106,12 +106,12 @@ async function cmdLogin(opts) {
 
   console.log('');
   console.log('  ┌────────────────────────────────────────────────┐');
-  console.log(`  │  Код:    \x1b[1;38;5;213m${d.user_code}\x1b[0m`.padEnd(64) + '│');
+  console.log(`  │  Code:   \x1b[1;38;5;213m${d.user_code}\x1b[0m`.padEnd(64) + '│');
   console.log(`  │  URL:    \x1b[36m${d.verification_uri}\x1b[0m`.padEnd(64) + '│');
   console.log('  └────────────────────────────────────────────────┘');
   console.log('');
-  console.log(`Открой URL в браузере, залогинься (GitHub/Google/пароль)`);
-  console.log(`и введи код. Ждём подтверждения…`);
+  console.log(`Open the URL in your browser, sign in (GitHub/Google/password)`);
+  console.log(`and enter the code. Waiting for confirmation…`);
   console.log('');
 
   const interval = (d.interval || 5) * 1000;
@@ -134,7 +134,7 @@ async function cmdLogin(opts) {
         device: deviceName,
         savedAt: new Date().toISOString(),
       });
-      console.log(`\x1b[32m✓ Залогинен. Токен сохранён в ${CONFIG_FILE}\x1b[0m`);
+      console.log(`\x1b[32m✓ Logged in. Token saved to ${CONFIG_FILE}\x1b[0m`);
       console.log(`  device: ${deviceName}`);
       console.log(`  exp:    ${new Date(Date.now() + (tok.expires_in || 0) * 1000).toISOString()}`);
       return;
@@ -145,24 +145,24 @@ async function cmdLogin(opts) {
       continue;
     }
     if (err.error === 'access_denied') {
-      console.error('\n✗ Отказано');
+      console.error('\n✗ Access denied');
       process.exit(1);
     }
     if (err.error === 'expired_token') {
-      console.error('\n✗ Код истёк, запусти login заново');
+      console.error('\n✗ Code expired, run login again');
       process.exit(1);
     }
-    console.error(`\n✗ Неожиданный ответ: ${JSON.stringify(err)}`);
+    console.error(`\n✗ Unexpected response: ${JSON.stringify(err)}`);
     process.exit(1);
   }
-  console.error('\n✗ Таймаут ожидания подтверждения');
+  console.error('\n✗ Timed out waiting for confirmation');
   process.exit(1);
 }
 
 function cmdWhoami() {
   const c = loadConfig();
   if (!c) {
-    console.log('Не залогинен. Запусти: agent-stack login --server https://...');
+    console.log('Not logged in. Run: agent-stack login --server https://...');
     return;
   }
   const masked = c.accessToken.slice(0, 12) + '…' + c.accessToken.slice(-6);
@@ -174,12 +174,12 @@ function cmdWhoami() {
 
 function cmdLogout() {
   if (fs.existsSync(CONFIG_FILE)) fs.unlinkSync(CONFIG_FILE);
-  console.log('Токен удалён.');
+  console.log('Token deleted.');
 }
 
 async function cmdCurl(args) {
   const c = loadConfig();
-  if (!c) { console.error('Не залогинен'); process.exit(1); }
+  if (!c) { console.error('Not logged in'); process.exit(1); }
   const [pathArg, ...rest] = args;
   if (!pathArg) { console.error('agent-stack curl <path> [...curl-args]'); process.exit(1); }
   const url = pathArg.startsWith('http') ? pathArg : `${c.proxyBase}${pathArg}`;
@@ -190,23 +190,23 @@ async function cmdCurl(args) {
 
 function cmdEnv() {
   const c = loadConfig();
-  if (!c) { console.error('# Не залогинен. Сначала: agent-stack login --server ...'); process.exit(1); }
+  if (!c) { console.error('# Not logged in. First run: agent-stack login --server ...'); process.exit(1); }
   console.log(`export OPENAI_BASE_URL="${c.proxyBase}/v1"`);
   console.log(`export OPENAI_API_KEY="${c.accessToken}"`);
-  console.log(`# Использование:  eval "$(agent-stack env)"`);
+  console.log(`# Usage:  eval "$(agent-stack env)"`);
 }
 
 function help() {
-  console.log(`agent-stack — CLI для self-hosted agent-stack
+  console.log(`agent-stack — CLI for a self-hosted agent-stack
 
-Команды:
-  login --server <url>     войти через OAuth Device Flow
-  whoami                   показать текущий аккаунт и сервер
-  logout                   удалить локальный токен
-  curl <path> [args...]    curl-обёртка с подставленным Bearer
-  env                      печатает export OPENAI_BASE_URL/OPENAI_API_KEY
+Commands:
+  login --server <url>     sign in via the OAuth Device Flow
+  whoami                   show the current account and server
+  logout                   delete the local token
+  curl <path> [args...]    curl wrapper with the Bearer token injected
+  env                      prints export OPENAI_BASE_URL/OPENAI_API_KEY
 
-Конфиг хранится в:  ${CONFIG_FILE}
+Config is stored at:  ${CONFIG_FILE}
 `);
 }
 
@@ -221,6 +221,6 @@ try {
   else if (cmd === 'env') cmdEnv();
   else help();
 } catch (e) {
-  console.error('Ошибка:', e.message || e);
+  console.error('Error:', e.message || e);
   process.exit(1);
 }

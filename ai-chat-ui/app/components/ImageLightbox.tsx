@@ -69,7 +69,7 @@ export function ImageLightbox({ image, onClose }: ImageLightboxProps) {
               download={image.name}
               className="ml-1 w-6 h-6 grid place-items-center rounded text-white/65 hover:text-white hover:bg-white/[0.08] transition"
               onClick={(e) => e.stopPropagation()}
-              title="Скачать"
+              title="Download"
             >
               <Download className="w-3.5 h-3.5" />
             </a>
@@ -79,7 +79,7 @@ export function ImageLightbox({ image, onClose }: ImageLightboxProps) {
               rel="noreferrer"
               className="w-6 h-6 grid place-items-center rounded text-white/65 hover:text-white hover:bg-white/[0.08] transition"
               onClick={(e) => e.stopPropagation()}
-              title="Открыть в новой вкладке"
+              title="Open in a new tab"
             >
               <ExternalLink className="w-3.5 h-3.5" />
             </a>
@@ -97,7 +97,7 @@ export function ImageLightbox({ image, onClose }: ImageLightboxProps) {
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.8 }}
             transition={{ delay: 0.05, duration: 0.2 }}
-            aria-label="Закрыть"
+            aria-label="Close"
           >
             <X className="w-5 h-5" />
           </motion.button>
@@ -130,7 +130,7 @@ export function ImageLightbox({ image, onClose }: ImageLightboxProps) {
             exit={{ opacity: 0 }}
             transition={{ delay: 0.15, duration: 0.25 }}
           >
-            клик вне картинки или Esc — закрыть
+            click outside the image or press Esc to close
           </motion.div>
         </motion.div>
       )}

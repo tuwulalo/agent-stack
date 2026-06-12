@@ -38,7 +38,7 @@ export function uid(): string {
   return Math.random().toString(36).slice(2, 11) + Date.now().toString(36).slice(-3)
 }
 
-export function deriveTitle(text: string, fallback = 'Новый чат'): string {
+export function deriveTitle(text: string, fallback = 'New chat'): string {
   const cleaned = (text || '').trim().replace(/\s+/g, ' ').replace(/_📎.*$/, '').trim()
   if (!cleaned) return fallback
   return cleaned.length > 48 ? cleaned.slice(0, 48) + '…' : cleaned
@@ -89,7 +89,7 @@ export function createSession(mode: ChatMode = 'auto'): ChatSession {
   const now = Date.now()
   return {
     id: uid(),
-    title: 'Новый чат',
+    title: 'New chat',
     mode,
     messages: [],
     createdAt: now,

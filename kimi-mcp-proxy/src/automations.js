@@ -249,7 +249,7 @@ export function getSchedule(id) {
 export function createSchedule(input) {
   const s = {
     id: newId('s-'),
-    name: String(input?.name || 'Без названия').slice(0, 200).trim() || 'Без названия',
+    name: String(input?.name || 'Untitled').slice(0, 200).trim() || 'Untitled',
     cron: String(input?.cron || '0 9 * * *').trim(),
     agent: VALID_AGENT.has(input?.agent) ? input.agent : 'hermes',
     task: String(input?.task || '').slice(0, 8000),

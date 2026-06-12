@@ -65,7 +65,7 @@ function newId() {
 
 function deriveName(prompt) {
   const t = String(prompt || '').replace(/\s+/g, ' ').trim();
-  if (!t) return 'Без названия';
+  if (!t) return 'Untitled';
   return t.length > 60 ? t.slice(0, 60) + '…' : t;
 }
 
@@ -184,20 +184,20 @@ export function deleteSession(id) {
   return true;
 }
 
-/** Прямые потомки сессии (один уровень вниз). */
+/** Direct children of a session (one level down). */
 export function getChildSessions(parentId) {
   return sessions.filter((s) => s.parentSessionId === parentId);
 }
 
 /**
- * Собрать markdown-сводку «вот что успели сделать твои саб-агенты пока
- * тебя SIGKILL'нуло». Используется при resume оркестратора:
- *   • если у сессии есть дети с непустыми lastSummary
- *   • и все дети уже неактивны (lastUsedAt > 30с назад)
- * → возвращаем блок текста чтобы префиксить им следующий prompt.
+ * Build a markdown digest of "here is what your sub-agents managed to do
+ * while you were SIGKILL'ed". Used when resuming an orchestrator:
+ *   • if the session has children with non-empty lastSummary
+ *   • and all children are already inactive (lastUsedAt > 30s ago)
+ * → return a text block to prefix the next prompt with.
  *
- * Если оркестратор уже их «видел» (его собственный lastUsedAt свежее любого
- * ребёнка) — ничего не возвращаем чтоб не дублировать.
+ * If the orchestrator has already "seen" them (its own lastUsedAt is fresher
+ * than any child's) — return nothing to avoid duplication.
  */
 export function buildChildrenRecoveryBlock(parentId) {
   const parent = sessions.find((s) => s.id === parentId);
@@ -207,17 +207,17 @@ export function buildChildrenRecoveryBlock(parentId) {
   const now = Date.now();
   const STALE_MS = 30_000;
   const allIdle = kids.every((k) => now - (k.lastUsedAt || 0) > STALE_MS);
-  if (!allIdle) return null; // дети ещё работают — пусть оркестратор подождёт
-  // оркестратор уже отвечал ПОСЛЕ того как последний ребёнок закончил?
+  if (!allIdle) return null; // children are still working — let the orchestrator wait
+  // did the orchestrator already reply AFTER the last child finished?
   const latestKid = Math.max(...kids.map((k) => k.lastUsedAt || 0));
-  if ((parent.lastUsedAt || 0) > latestKid + 5_000) return null; // уже подхватил
-  // собираем блок
+  if ((parent.lastUsedAt || 0) > latestKid + 5_000) return null; // already picked up
+  // assemble the block
   const lines = [];
-  lines.push('--- recovery context: твои саб-агенты УЖЕ закончили работу ---');
-  lines.push(`(оркестратор #${parent.id} был прерван SIGKILL/timeout, но ${kids.length} саб-агента отчитались)`);
+  lines.push('--- recovery context: your sub-agents have ALREADY finished their work ---');
+  lines.push(`(orchestrator #${parent.id} was interrupted by SIGKILL/timeout, but ${kids.length} sub-agent(s) reported back)`);
   lines.push('');
   for (const k of kids) {
-    lines.push(`## ${k.name} (${k.id}, ${k.turns} ход${k.turns === 1 ? '' : 'а'})`);
+    lines.push(`## ${k.name} (${k.id}, ${k.turns} turn${k.turns === 1 ? '' : 's'})`);
     lines.push(k.lastSummary);
     lines.push('');
   }

@@ -70,11 +70,11 @@ export function AgentTrace({
       >
         <Brain className="w-3.5 h-3.5 text-violet-300/80" />
         <span className="uppercase tracking-[0.1em] text-violet-200/75">
-          Ход мыслей
+          Thought process
         </span>
         <span className="text-white/40">·</span>
         <span className="text-white/55">
-          {toolCalls > 0 ? `${toolCalls} вызов${toolCalls === 1 ? '' : toolCalls < 5 ? 'а' : 'ов'} инструмента` : `${paired.length} шаг`}
+          {toolCalls > 0 ? `${toolCalls} tool call${toolCalls === 1 ? '' : 's'}` : `${paired.length} step${paired.length === 1 ? '' : 's'}`}
         </span>
         {streaming && (
           <span className="ml-1 flex items-center gap-1 text-[10px] text-violet-300/80">
@@ -170,7 +170,7 @@ export function AgentTrace({
                   <div className="px-2.5 py-2 text-[11.5px] italic text-white/55 leading-relaxed bg-violet-500/[0.03] border-l-2 border-violet-400/30">
                     <div className="flex items-center gap-1.5 not-italic mb-1 text-[10px] uppercase tracking-wider text-violet-300/70">
                       <Brain className="w-3 h-3" />
-                      думает
+                      thinking
                     </div>
                     {p.thinking.text}
                   </div>
@@ -181,7 +181,7 @@ export function AgentTrace({
             {streaming && (
               <div className="flex items-center gap-2 px-1 py-1 text-[11px] text-white/45">
                 <span className="w-1.5 h-1.5 rounded-full bg-violet-300/70 animate-pulse" />
-                <span>Hermes продолжает работать…</span>
+                <span>Hermes is still working…</span>
               </div>
             )}
           </motion.div>

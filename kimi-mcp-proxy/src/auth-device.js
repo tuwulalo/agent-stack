@@ -1,21 +1,21 @@
 /**
  * OAuth 2.0 Device Authorization Grant (RFC 8628).
  *
- * Поток:
- *   1. CLI на компе → POST /v1/auth/device          → {device_code, user_code, verification_uri, expires_in, interval}
- *   2. CLI печатает code+URL → юзер открывает в браузере, логинится в UI,
- *      вводит user_code на /cli, UI делает POST /v1/auth/device/approve
- *   3. CLI поллит → POST /v1/auth/device/poll       → пока pending; после approve → {access_token, token_type:'Bearer'}
+ * Flow:
+ *   1. CLI on the user's machine → POST /v1/auth/device          → {device_code, user_code, verification_uri, expires_in, interval}
+ *   2. CLI prints code+URL → the user opens it in a browser, logs into the UI,
+ *      enters the user_code on /cli, the UI does POST /v1/auth/device/approve
+ *   3. CLI polls → POST /v1/auth/device/poll       → pending until approved; after approve → {access_token, token_type:'Bearer'}
  *
- * Хранилище в памяти процесса (Map с TTL). Для single-VPS — ок. Для кластера
- * заменить на Redis. Записи живут 15 минут.
+ * Storage is in process memory (Map with TTL). Fine for a single VPS. For a
+ * cluster, replace with Redis. Entries live for 15 minutes.
  */
 import crypto from 'node:crypto';
 import { signJwt } from './auth-jwt.js';
 
 const TTL_MS = 15 * 60 * 1000;
 const POLL_INTERVAL_SEC = 5;
-const ACCESS_TOKEN_TTL_SEC = 90 * 24 * 60 * 60; // 90 дней
+const ACCESS_TOKEN_TTL_SEC = 90 * 24 * 60 * 60; // 90 days
 
 /** @type {Map<string, {userCode:string, status:'pending'|'approved'|'denied', email?:string, deviceName?:string, createdAt:number, lastPollAt:number}>} */
 const codes = new Map();
@@ -28,12 +28,12 @@ function sweep() {
 }
 setInterval(sweep, 60 * 1000).unref?.();
 
-/** Безопасный device_code: длинный URL-safe токен. */
+/** Secure device_code: a long URL-safe token. */
 function genDeviceCode() {
   return crypto.randomBytes(32).toString('base64url');
 }
 
-/** Короткий user_code в формате XXXX-XXXX. Без I, O, 0, 1 (легко спутать). */
+/** Short user_code in XXXX-XXXX format. No I, O, 0, 1 (easy to confuse). */
 function genUserCode() {
   const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   const pick = () => alphabet[crypto.randomInt(0, alphabet.length)];
@@ -49,14 +49,14 @@ function findByUserCode(userCode) {
 }
 
 function publicVerificationUri() {
-  // База берётся из OAUTH_REDIRECT_BASE или из явного PUBLIC_BASE.
-  // Это публичный URL, на котором отдаётся UI (/cli).
+  // The base comes from OAUTH_REDIRECT_BASE or from an explicit PUBLIC_BASE.
+  // This is the public URL where the UI (/cli) is served.
   const base = (process.env.PUBLIC_BASE || process.env.OAUTH_REDIRECT_BASE || '').replace(/\/$/, '');
   return base ? `${base}/cli` : '/cli';
 }
 
 export function registerAuthDeviceRoutes(app) {
-  /** Шаг 1: CLI инициирует. Не требует авторизации. */
+  /** Step 1: the CLI initiates. No authorization required. */
   app.post('/v1/auth/device', express_json_safe, (req, res) => {
     const deviceName = String(req.body?.deviceName || 'cli').slice(0, 64);
     const deviceCode = genDeviceCode();
@@ -78,13 +78,13 @@ export function registerAuthDeviceRoutes(app) {
     });
   });
 
-  /** Шаг 3: CLI поллит. Не требует авторизации (защита через device_code). */
+  /** Step 3: the CLI polls. No authorization required (protected by device_code). */
   app.post('/v1/auth/device/poll', express_json_safe, (req, res) => {
     const deviceCode = String(req.body?.device_code || '');
     const entry = codes.get(deviceCode);
     if (!entry) return res.status(400).json({ error: 'expired_token' });
 
-    // Throttle: чаще раза в 5 секунд — slow_down.
+    // Throttle: more often than once per 5 seconds — slow_down.
     const now = Date.now();
     if (now - entry.lastPollAt < POLL_INTERVAL_SEC * 1000 - 500) {
       return res.status(400).json({ error: 'slow_down' });
@@ -113,9 +113,9 @@ export function registerAuthDeviceRoutes(app) {
   });
 
   /**
-   * Шаг 2: подтверждение из UI. Сюда обращается Next.js после того, как
-   * проверил web-сессию пользователя и взял его email из cookie.
-   * Защищено shared-секретом PROXY_API_KEY (UI и proxy на одной машине).
+   * Step 2: approval from the UI. Next.js calls this after verifying the
+   * user's web session and taking their email from the cookie.
+   * Protected by the PROXY_API_KEY shared secret (UI and proxy are on the same machine).
    */
   app.post('/v1/auth/device/approve', express_json_safe, (req, res) => {
     const sharedKey = req.get('x-proxy-key') || '';
@@ -138,7 +138,7 @@ export function registerAuthDeviceRoutes(app) {
   });
 }
 
-/** express.json() уже глобально, но на этих эндпоинтах хочется быть точным. */
+/** express.json() is already global, but on these endpoints we want to be precise. */
 function express_json_safe(req, res, next) {
   if (typeof req.body !== 'object' || req.body === null) req.body = {};
   next();

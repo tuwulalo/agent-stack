@@ -50,14 +50,14 @@ export function StatusPanel({ session, onChangeModel, onChangeSystemPrompt }: Pr
   }, [])
 
   const messageCount = session?.messages.filter(m => m.role !== 'system').length ?? 0
-  const startedAt = session ? new Date(session.createdAt).toLocaleString('ru-RU', {
+  const startedAt = session ? new Date(session.createdAt).toLocaleString('en-US', {
     day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'
   }) : '—'
 
   return (
     <aside className="status-panel">
       <div className="panel-section">
-        <div className="panel-title">Сервисы</div>
+        <div className="panel-title">Services</div>
         {SERVICES.map(s => {
           const st = statuses[s.key]
           return (
@@ -78,7 +78,7 @@ export function StatusPanel({ session, onChangeModel, onChangeSystemPrompt }: Pr
         <a className="action-link" href={HERMES_DASHBOARD} target="_blank" rel="noopener noreferrer">
           <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <TerminalIcon size={14} />
-            Открыть Dashboard
+            Open Dashboard
           </span>
           <ExternalIcon size={12} />
         </a>
@@ -88,13 +88,13 @@ export function StatusPanel({ session, onChangeModel, onChangeSystemPrompt }: Pr
           target="_blank"
           rel="noopener noreferrer"
         >
-          <span>Сессии агента</span>
+          <span>Agent sessions</span>
           <ExternalIcon size={12} />
         </a>
       </div>
 
       <div className="panel-section">
-        <div className="panel-title">Модель</div>
+        <div className="panel-title">Model</div>
         <select
           value={session?.model || MODELS[0].id}
           onChange={(e) => onChangeModel(e.target.value)}
@@ -107,7 +107,7 @@ export function StatusPanel({ session, onChangeModel, onChangeSystemPrompt }: Pr
           ))}
         </select>
         <div style={{ marginTop: 8, fontSize: 11.5, color: 'var(--text-tertiary)', lineHeight: 1.4 }}>
-          {MODELS.find(m => m.id === session?.model)?.hint || 'Выбери активную модель Kimi'}
+          {MODELS.find(m => m.id === session?.model)?.hint || 'Pick the active Kimi model'}
         </div>
       </div>
 
@@ -115,7 +115,7 @@ export function StatusPanel({ session, onChangeModel, onChangeSystemPrompt }: Pr
         <div className="panel-title">System prompt</div>
         <textarea
           className="system-prompt"
-          placeholder="Опиши поведение ассистента…"
+          placeholder="Describe how the assistant should behave…"
           value={session?.systemPrompt || ''}
           onChange={(e) => onChangeSystemPrompt(e.target.value)}
           disabled={!session}
@@ -123,17 +123,17 @@ export function StatusPanel({ session, onChangeModel, onChangeSystemPrompt }: Pr
       </div>
 
       <div className="panel-section">
-        <div className="panel-title">Сессия</div>
+        <div className="panel-title">Session</div>
         <div className="kv">
           <span className="kv-key">ID</span>
           <span className="kv-val">{session?.id.slice(0, 8) || '—'}</span>
         </div>
         <div className="kv">
-          <span className="kv-key">Сообщений</span>
+          <span className="kv-key">Messages</span>
           <span className="kv-val">{messageCount}</span>
         </div>
         <div className="kv">
-          <span className="kv-key">Старт</span>
+          <span className="kv-key">Started</span>
           <span className="kv-val">{startedAt}</span>
         </div>
       </div>

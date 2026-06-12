@@ -86,7 +86,7 @@ export function AutomationsMcps() {
   }
 
   const onDelete = async (m: McpConfigured) => {
-    if (!confirm(`Удалить MCP «${m.name}»?`)) return
+    if (!confirm(`Delete MCP "${m.name}"?`)) return
     setBusy(true)
     try {
       await deleteMcp(m.id)
@@ -100,24 +100,24 @@ export function AutomationsMcps() {
       <section className="col-span-12 lg:col-span-7 space-y-2">
         <div className="flex items-center gap-2 mb-1">
           <Plug className="w-4 h-4 text-violet-300" />
-          <h2 className="text-[13px] font-medium text-white/90">Установленные MCP</h2>
+          <h2 className="text-[13px] font-medium text-white/90">Installed MCPs</h2>
           <span className="text-[11px] text-white/35">{mcps.length}</span>
           <span className="flex-1" />
           <button
             onClick={() => void reload()}
             disabled={loading}
             className="p-1.5 rounded text-white/45 hover:text-white hover:bg-white/[0.06] transition"
-            title="Обновить"
+            title="Refresh"
           >
             <RefreshCw className={'w-3.5 h-3.5 ' + (loading ? 'animate-spin' : '')} />
           </button>
           <button
             onClick={() => setCustomOpen(true)}
             className="px-2.5 py-1.5 rounded-md text-[12px] bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06] text-white/75 hover:text-white transition flex items-center gap-1.5"
-            title="Добавить произвольный MCP-сервер"
+            title="Add a custom MCP server"
           >
             <Plus className="w-3.5 h-3.5" />
-            Свой
+            Custom
           </button>
         </div>
 
@@ -128,14 +128,14 @@ export function AutomationsMcps() {
         )}
 
         {loading && mcps.length === 0 ? (
-          <div className="py-10 text-center text-white/40 text-[12.5px]">загрузка…</div>
+          <div className="py-10 text-center text-white/40 text-[12.5px]">loading…</div>
         ) : mcps.length === 0 ? (
           <div className="px-4 py-10 text-center rounded-lg border border-dashed border-white/10">
             <Plug className="w-10 h-10 text-white/15 mx-auto mb-3" />
-            <div className="text-[13px] text-white/65 mb-1">MCP-серверы пока не подключены</div>
+            <div className="text-[13px] text-white/65 mb-1">No MCP servers connected yet</div>
             <div className="text-[11.5px] text-white/40 max-w-[340px] mx-auto leading-relaxed">
-              Выбери справа из каталога — установка одной кнопкой. Или подключи свой произвольный
-              сервер через `npx … / docker … / python …`.
+              Pick one from the catalog on the right — one-click install. Or connect your own
+              custom server via `npx … / docker … / python …`.
             </div>
           </div>
         ) : (
@@ -180,7 +180,7 @@ export function AutomationsMcps() {
                         )}
                         {!m.enabled && (
                           <span className="text-[10px] text-amber-300 px-1.5 py-0.5 rounded bg-amber-400/5 border border-amber-400/20">
-                            пауза
+                            paused
                           </span>
                         )}
                       </div>
@@ -199,7 +199,7 @@ export function AutomationsMcps() {
                         onClick={() => onRestart(m)}
                         disabled={busy}
                         className="p-1.5 rounded text-white/55 hover:text-violet-300 hover:bg-white/[0.06] transition disabled:opacity-40"
-                        title="Перезапустить"
+                        title="Restart"
                       >
                         <RefreshCw className="w-3.5 h-3.5" />
                       </button>
@@ -210,14 +210,14 @@ export function AutomationsMcps() {
                           'p-1.5 rounded hover:bg-white/[0.06] transition disabled:opacity-40 ' +
                           (m.enabled ? 'text-emerald-300' : 'text-white/40 hover:text-white')
                         }
-                        title={m.enabled ? 'Остановить' : 'Запустить'}
+                        title={m.enabled ? 'Stop' : 'Start'}
                       >
                         <Power className="w-3.5 h-3.5" />
                       </button>
                       <button
                         onClick={() => setEditMcp(m)}
                         className="p-1.5 rounded text-white/55 hover:text-white hover:bg-white/[0.06] transition"
-                        title="Редактировать"
+                        title="Edit"
                       >
                         <Pencil className="w-3.5 h-3.5" />
                       </button>
@@ -225,7 +225,7 @@ export function AutomationsMcps() {
                         onClick={() => onDelete(m)}
                         disabled={busy}
                         className="p-1.5 rounded text-white/40 hover:text-red-300 hover:bg-red-500/10 transition disabled:opacity-40"
-                        title="Удалить"
+                        title="Delete"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
@@ -242,7 +242,7 @@ export function AutomationsMcps() {
                       >
                         <div className="px-3.5 py-2.5 bg-black/20">
                           <div className="text-[10.5px] uppercase tracking-wider text-white/45 mb-1.5">
-                            Доступные инструменты ({m.tools.length})
+                            Available tools ({m.tools.length})
                           </div>
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
                             {m.tools.map((t) => (
@@ -270,8 +270,8 @@ export function AutomationsMcps() {
         )}
 
         <p className="text-[10.5px] text-white/30 pt-3 border-t border-white/[0.04] leading-relaxed">
-          MCP-серверы запускаются как дочерние процессы прокси и держат stdio-соединение.
-          Сейчас инструменты видны, но в чат Kimi пока НЕ инжектятся — это следующий шаг (выбор «какие MCP видит какой агент»).
+          MCP servers run as child processes of the proxy and keep a stdio connection.
+          Tools are visible now, but they are NOT yet injected into the Kimi chat — that's the next step (choosing which agent sees which MCPs).
         </p>
       </section>
 
@@ -279,7 +279,7 @@ export function AutomationsMcps() {
       <aside className="col-span-12 lg:col-span-5">
         <div className="flex items-center gap-2 mb-1.5">
           <Sparkles className="w-4 h-4 text-violet-300" />
-          <h2 className="text-[13px] font-medium text-white/90">Каталог</h2>
+          <h2 className="text-[13px] font-medium text-white/90">Catalog</h2>
           <span className="text-[11px] text-white/35">{catalog.length}</span>
         </div>
         <div className="space-y-1.5 max-h-[calc(100vh-220px)] overflow-y-auto pr-1">
@@ -302,12 +302,12 @@ export function AutomationsMcps() {
                   {installed ? (
                     <span className="ml-auto text-[10.5px] text-emerald-300 flex items-center gap-1">
                       <Check className="w-3 h-3" />
-                      установлено
+                      installed
                     </span>
                   ) : (
                     <span className="ml-auto text-[10.5px] text-violet-300 opacity-0 group-hover:opacity-100 flex items-center gap-1">
                       <Download className="w-3 h-3" />
-                      установить
+                      install
                     </span>
                   )}
                 </div>
@@ -394,15 +394,15 @@ function InstallDialog({
     }
   }
 
-  return <ModalShell onClose={onClose} title={`Установить ${cat.name}`} icon={Download}>
+  return <ModalShell onClose={onClose} title={`Install ${cat.name}`} icon={Download}>
     <p className="text-[11.5px] text-white/55 mb-3 leading-relaxed">{cat.description}</p>
-    <Field label="Команда">
+    <Field label="Command">
       <code className="block px-2.5 py-1.5 rounded bg-black/40 border border-white/10 text-[12px] font-mono text-white/85">
         {cat.command} {args}
       </code>
     </Field>
     {(cat.args.length > 0 || cat.argsHint) && (
-      <Field label={`Аргументы${cat.argsHint ? ' — ' + cat.argsHint : ''}`}>
+      <Field label={`Arguments${cat.argsHint ? ' — ' + cat.argsHint : ''}`}>
         <input
           value={args} onChange={(e) => setArgs(e.target.value)}
           spellCheck={false}
@@ -411,7 +411,7 @@ function InstallDialog({
       </Field>
     )}
     {cat.env.length > 0 && (
-      <Field label="Переменные окружения (обязательно)">
+      <Field label="Environment variables (required)">
         <div className="space-y-2">
           {cat.env.map((k) => (
             <div key={k}>
@@ -423,7 +423,7 @@ function InstallDialog({
                 type="password"
                 value={envValues[k] || ''}
                 onChange={(e) => setEnvValues((p) => ({ ...p, [k]: e.target.value }))}
-                placeholder={`Введи значение ${k}`}
+                placeholder={`Enter a value for ${k}`}
                 className={inputCls + ' font-mono'}
               />
             </div>
@@ -433,7 +433,7 @@ function InstallDialog({
     )}
     {err && <div className="text-[11.5px] text-red-300 bg-red-500/10 border border-red-400/20 rounded px-2 py-1">{err}</div>}
     <ModalFooter onClose={onClose} primary={{
-      label: busy ? 'Подключаю…' : 'Установить и запустить',
+      label: busy ? 'Connecting…' : 'Install and start',
       onClick: onInstall,
       disabled: busy || !ready,
     }} />
@@ -474,27 +474,27 @@ function CustomDialog({ onClose, onAdded }: { onClose: () => void; onAdded: () =
     }
   }
 
-  return <ModalShell onClose={onClose} title="Свой MCP-сервер" icon={Plus}>
-    <Field label="Название">
+  return <ModalShell onClose={onClose} title="Custom MCP server" icon={Plus}>
+    <Field label="Name">
       <input autoFocus value={name} onChange={(e) => setName(e.target.value)}
-        placeholder="Например: my-internal-tool" className={inputCls} />
+        placeholder="e.g. my-internal-tool" className={inputCls} />
     </Field>
-    <Field label="Команда">
+    <Field label="Command">
       <input value={command} onChange={(e) => setCommand(e.target.value)}
         className={inputCls + ' font-mono'} />
     </Field>
-    <Field label="Аргументы (через пробел)">
+    <Field label="Arguments (space-separated)">
       <input value={argsStr} onChange={(e) => setArgsStr(e.target.value)}
         className={inputCls + ' font-mono'} />
     </Field>
-    <Field label="Переменные окружения (по строке, KEY=value)">
+    <Field label="Environment variables (one per line, KEY=value)">
       <textarea value={envStr} onChange={(e) => setEnvStr(e.target.value)}
         rows={3} placeholder={'GITHUB_TOKEN=ghp_xxx\nDEBUG=1'}
         className={inputCls + ' font-mono resize-y min-h-[80px]'} />
     </Field>
     {err && <div className="text-[11.5px] text-red-300 bg-red-500/10 border border-red-400/20 rounded px-2 py-1">{err}</div>}
     <ModalFooter onClose={onClose} primary={{
-      label: busy ? 'Подключаю…' : 'Добавить и запустить',
+      label: busy ? 'Connecting…' : 'Add and start',
       onClick: onAdd,
       disabled: busy || !command.trim(),
     }} />
@@ -522,7 +522,7 @@ function EditDialog({ mcp, onClose, onSaved }: { mcp: McpConfigured; onClose: ()
         if (val) env[key] = val      // empty value = "don't change" (server merges fresh on update)
       }
       await updateMcp(mcp.id, {
-        name: name.trim() || 'Без названия',
+        name: name.trim() || 'Untitled',
         args: argsStr.trim().split(/\s+/).filter(Boolean),
         ...(Object.keys(env).length > 0 ? { env } : {}),
       })
@@ -531,26 +531,26 @@ function EditDialog({ mcp, onClose, onSaved }: { mcp: McpConfigured; onClose: ()
     finally { setBusy(false) }
   }
 
-  return <ModalShell onClose={onClose} title={`Редактировать ${mcp.name}`} icon={Settings}>
-    <Field label="Название">
+  return <ModalShell onClose={onClose} title={`Edit ${mcp.name}`} icon={Settings}>
+    <Field label="Name">
       <input value={name} onChange={(e) => setName(e.target.value)} className={inputCls} />
     </Field>
-    <Field label={`Команда (неизменяема): ${mcp.command}`}>
+    <Field label={`Command (read-only): ${mcp.command}`}>
       <input value={argsStr} onChange={(e) => setArgsStr(e.target.value)}
-        className={inputCls + ' font-mono'} placeholder="аргументы" />
+        className={inputCls + ' font-mono'} placeholder="arguments" />
     </Field>
     {mcp.envKeys.length > 0 && (
-      <Field label="Переменные окружения (значения скрыты — заполни только те, что меняешь)">
+      <Field label="Environment variables (values hidden — fill in only the ones you're changing)">
         <textarea value={envStr} onChange={(e) => setEnvStr(e.target.value)}
           rows={3} className={inputCls + ' font-mono resize-y min-h-[80px]'} />
         <div className="text-[10.5px] text-white/35 mt-1">
-          Пустое значение справа от `=` оставит старое нетронутым.
+          Leave the value after `=` empty to keep the old one.
         </div>
       </Field>
     )}
     {err && <div className="text-[11.5px] text-red-300 bg-red-500/10 border border-red-400/20 rounded px-2 py-1">{err}</div>}
     <ModalFooter onClose={onClose} primary={{
-      label: busy ? 'Сохраняю…' : 'Сохранить и перезапустить',
+      label: busy ? 'Saving…' : 'Save and restart',
       onClick: onSave,
       disabled: busy,
     }} />
@@ -605,7 +605,7 @@ function ModalFooter({
         onClick={onClose}
         className="px-3 py-1.5 rounded-md text-[12px] text-white/65 hover:text-white hover:bg-white/[0.06] transition"
       >
-        Отмена
+        Cancel
       </button>
       <span className="flex-1" />
       <button

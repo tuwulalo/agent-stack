@@ -29,7 +29,7 @@ export function LogoutPill() {
     <button
       type="button"
       onClick={logout}
-      title="Выйти"
+      title="Sign out"
       style={{
         position: 'fixed',
         top: 14,
@@ -62,7 +62,7 @@ export function LogoutPill() {
         <polyline points="16 17 21 12 16 7" />
         <line x1="21" y1="12" x2="9" y2="12" />
       </svg>
-      <span>Выйти</span>
+      <span>Sign out</span>
     </button>
   )
 }

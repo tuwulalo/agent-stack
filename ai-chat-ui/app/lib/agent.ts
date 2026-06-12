@@ -110,7 +110,7 @@ export async function agentRun({ prompt, context, chatId, signal, onEvent }: Age
       `HTTP ${res.status}${detail ? ` — ${detail.slice(0, 250)}` : ''}`,
     )
   }
-  if (!res.body) throw new Error('Пустой ответ от агента')
+  if (!res.body) throw new Error('Empty response from the agent')
 
   const reader = res.body.getReader()
   const decoder = new TextDecoder()

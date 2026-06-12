@@ -1,28 +1,28 @@
 'use client'
 
 /**
- * 10 минималистичных маскотов отряда «зек» (из Claude Design handoff).
- * Каждый — уникальный геометрический силуэт с лицом. Если `live=true` —
- * включаются индивидуальные SVG-анимации (см. mascot animations в globals.css).
+ * 10 minimalist mascots of the "zek" squad (from the Claude Design handoff).
+ * Each one is a unique geometric silhouette with a face. When `live=true`,
+ * individual SVG animations kick in (see mascot animations in globals.css).
  */
 
 export type MascotId =
-  | 'sisto'    // systemd / процессы
-  | 'shild'    // SSH / fail2ban / фаервол
-  | 'keddi'    // Caddy / nginx / реверс-прокси
-  | 'hranitel' // Postgres / Redis / бэкапы
-  | 'logan'    // журналы / поиск
-  | 'signal'   // DNS / curl / трассировка
-  | 'mostik'   // MCP / туннели / мосты
-  | 'kuvald'   // сборки / деплои / CI
-  | 'okular'   // uptime / метрики / алерты
-  | 'maestro'  // оркестратор / root
+  | 'sisto'    // systemd / processes
+  | 'shild'    // SSH / fail2ban / firewall
+  | 'keddi'    // Caddy / nginx / reverse proxy
+  | 'hranitel' // Postgres / Redis / backups
+  | 'logan'    // logs / search
+  | 'signal'   // DNS / curl / tracing
+  | 'mostik'   // MCP / tunnels / bridges
+  | 'kuvald'   // builds / deploys / CI
+  | 'okular'   // uptime / metrics / alerts
+  | 'maestro'  // orchestrator / root
 
 export type MascotStatus = 'active' | 'ready' | 'idle' | 'failed'
 
-/** Identity маскота — то, что не меняется (имя, домен, дефолтный промпт).
-    Runtime stats (status/turns/runtime/lastTask) считаются отдельно из живых
-    сессий через buildRosterFromSessions(). */
+/** Mascot identity — the part that never changes (name, domain, default prompt).
+    Runtime stats (status/turns/runtime/lastTask) are computed separately from
+    live sessions via buildRosterFromSessions(). */
 export interface MascotIdentity {
   id: MascotId
   idx: string
@@ -30,48 +30,48 @@ export interface MascotIdentity {
   role: string
   domain: string
   traits: string[]
-  /** Дефолтный промпт под этого маскота — подставляется в textarea при
-      клике «↪ позвать в автомат» если у юзера нет своего конкретного запроса. */
+  /** Default prompt for this mascot — inserted into the textarea when the user
+      clicks "↪ send to automation" and has no specific request of their own. */
   defaultPrompt: string
 }
 
-/** Полное состояние маскота для UI — identity + runtime. */
+/** Full mascot state for the UI — identity + runtime. */
 export interface MascotMeta extends MascotIdentity {
   status: MascotStatus
   statusLabel: string
   lastTask: string
   turns: number
   runtime: string
-  /** id серверной сессии этого маскота, если есть (для прямого открытия). */
+  /** id of this mascot's server session, if any (for opening it directly). */
   sessionId: string | null
 }
 
-/** Каноническая identity-таблица — без runtime данных. */
+/** Canonical identity table — no runtime data. */
 export const ROSTER_IDENTITY: MascotIdentity[] = [
-  { id: 'sisto',    idx: '01', name: 'Систо',     role: 'systemd · процессы · юниты',       domain: 'Сервисы',      traits: ['systemctl', 'journalctl', 'юниты', 'таймеры'],
-    defaultPrompt: 'Проверь все systemd-юниты на VPS — какие active, какие failed, какие не enabled. Для каждого failed подними `journalctl -u <unit> --since "1h ago" --no-pager | tail -30` и скажи что не так. Кратко.' },
-  { id: 'shild',    idx: '02', name: 'Шилд',      role: 'SSH · fail2ban · фаервол',         domain: 'Безопасность', traits: ['sshd', 'fail2ban', 'iptables', 'ufw'],
-    defaultPrompt: 'Проверь безопасность VPS: PermitRootLogin/PasswordAuthentication в sshd_config, статус fail2ban + забаненные IP, открытые порты наружу (ss -ltnp), последние 50 failed логинов в /var/log/auth.log. Скажи где дыра.' },
-  { id: 'keddi',    idx: '03', name: 'Кэдди',     role: 'Caddy · nginx · реверс-прокси',    domain: 'Веб',          traits: ['caddy', 'nginx', 'TLS', 'HTTP/2'],
-    defaultPrompt: 'Распарси /etc/caddy/Caddyfile — какие vhost\'ы, на какие апстримы. Для каждого хоста curl -sS -o /dev/null -w "%{http_code} %{time_total}s\\n" https://<host>/. Проверь SSL-expiry через openssl s_client. Скажи где беда.' },
-  { id: 'hranitel', idx: '04', name: 'Хранитель', role: 'Postgres · Redis · бэкапы',        domain: 'Данные',       traits: ['psql', 'redis-cli', 'pg_dump', 'wal'],
-    defaultPrompt: 'Проверь состояние БД на VPS: какие postgres/redis instances запущены, размер /var/lib/{postgresql,redis}, последний бэкап (mtime). Сделай pg_dump --schema-only одной БД для проверки целостности.' },
-  { id: 'logan',    idx: '05', name: 'Логан',     role: 'журналы · поиск · корреляция',     domain: 'Логи',         traits: ['grep', 'awk', 'jq', 'loki'],
-    defaultPrompt: 'Сделай deep-scan журналов за последние 24ч: journalctl --since "24h ago" --priority=err | tail -50, top-10 процессов по log volume, аномалии в /var/log/syslog. Сгруппируй по причинам.' },
-  { id: 'signal',   idx: '06', name: 'Сигнал',    role: 'DNS · curl · трассировка',         domain: 'Сеть',         traits: ['dig', 'mtr', 'tcpdump', 'curl'],
-    defaultPrompt: 'Проверь сетку VPS: dig +short для всех публичных доменов из caddy, ping/mtr до 1.1.1.1, ss -tulpn (что слушает), iptables -L -n -v. Скажи где проблема с резолвом или маршрутизацией.' },
-  { id: 'mostik',   idx: '07', name: 'Мостик',    role: 'MCP · туннели · мосты',            domain: 'Интеграции',   traits: ['mcp', 'ssh -L', 'wireguard', 'stunnel'],
-    defaultPrompt: 'Диагностика kimi-mcp-proxy: статус сервиса, последние 50 строк journalctl -u kimi-mcp-proxy, какие MCP клиенты подключены, время отклика /health. Где медленно — патч.' },
-  { id: 'kuvald',   idx: '08', name: 'Кувалд',    role: 'сборки · деплои · CI',             domain: 'Деплой',       traits: ['docker', 'make', 'systemd-run', 'git'],
-    defaultPrompt: 'Пересобери ai-chat-ui (npm run build в /opt/ai-chat-ui), безопасно перезапусти ai-chat-ui.service через systemd-run --on-active=3s. Проверь что после рестарта сервис active и /health отвечает.' },
-  { id: 'okular',   idx: '09', name: 'Окуляр',    role: 'uptime · метрики · алерты',        domain: 'Мониторинг',   traits: ['uptime', 'vmstat', 'iostat', 'loadavg'],
-    defaultPrompt: 'Соберу health-отчёт VPS: uptime + loadavg, free -h, df -h, top-10 процессов по %CPU и %MEM, iostat -xz 1 3, vmstat 1 3. Скажи где упирается.' },
-  { id: 'maestro',  idx: '10', name: 'Маэстро',   role: 'оркестратор · root · координация', domain: 'Оркестрация',  traits: ['root', 'delegate', 'parallel', 'merge'],
-    defaultPrompt: 'Сделай полный аудит VPS параллельно через ≥5 саб-агентов: services, security, web, data, logs, network, deploy, monitoring. Раздели через POST /automations/delegate с parentSessionId=$KP_SESSION_ID и собери в единый отчёт.' },
+  { id: 'sisto',    idx: '01', name: 'Sisto',    role: 'systemd · processes · units',       domain: 'Services',      traits: ['systemctl', 'journalctl', 'units', 'timers'],
+    defaultPrompt: 'Check all systemd units on the VPS — which are active, which failed, which are not enabled. For each failed unit run `journalctl -u <unit> --since "1h ago" --no-pager | tail -30` and explain what went wrong. Keep it brief.' },
+  { id: 'shild',    idx: '02', name: 'Shild',    role: 'SSH · fail2ban · firewall',         domain: 'Security',      traits: ['sshd', 'fail2ban', 'iptables', 'ufw'],
+    defaultPrompt: 'Check VPS security: PermitRootLogin/PasswordAuthentication in sshd_config, fail2ban status + banned IPs, ports open to the outside (ss -ltnp), last 50 failed logins in /var/log/auth.log. Point out the weak spots.' },
+  { id: 'keddi',    idx: '03', name: 'Keddi',    role: 'Caddy · nginx · reverse proxy',     domain: 'Web',           traits: ['caddy', 'nginx', 'TLS', 'HTTP/2'],
+    defaultPrompt: 'Parse /etc/caddy/Caddyfile — which vhosts point to which upstreams. For each host run curl -sS -o /dev/null -w "%{http_code} %{time_total}s\\n" https://<host>/. Check SSL expiry via openssl s_client. Report anything broken.' },
+  { id: 'hranitel', idx: '04', name: 'Hranitel', role: 'Postgres · Redis · backups',        domain: 'Data',          traits: ['psql', 'redis-cli', 'pg_dump', 'wal'],
+    defaultPrompt: 'Check database health on the VPS: which postgres/redis instances are running, size of /var/lib/{postgresql,redis}, most recent backup (mtime). Run pg_dump --schema-only on one database to verify integrity.' },
+  { id: 'logan',    idx: '05', name: 'Logan',    role: 'logs · search · correlation',       domain: 'Logs',          traits: ['grep', 'awk', 'jq', 'loki'],
+    defaultPrompt: 'Do a deep scan of the logs for the last 24h: journalctl --since "24h ago" --priority=err | tail -50, top 10 processes by log volume, anomalies in /var/log/syslog. Group findings by cause.' },
+  { id: 'signal',   idx: '06', name: 'Signal',   role: 'DNS · curl · tracing',              domain: 'Network',       traits: ['dig', 'mtr', 'tcpdump', 'curl'],
+    defaultPrompt: 'Check VPS networking: dig +short for all public domains from caddy, ping/mtr to 1.1.1.1, ss -tulpn (what is listening), iptables -L -n -v. Report any DNS resolution or routing problems.' },
+  { id: 'mostik',   idx: '07', name: 'Mostik',   role: 'MCP · tunnels · bridges',           domain: 'Integrations',  traits: ['mcp', 'ssh -L', 'wireguard', 'stunnel'],
+    defaultPrompt: 'Diagnose kimi-mcp-proxy: service status, last 50 lines of journalctl -u kimi-mcp-proxy, which MCP clients are connected, /health response time. Patch wherever it is slow.' },
+  { id: 'kuvald',   idx: '08', name: 'Kuvald',   role: 'builds · deploys · CI',             domain: 'Deploy',        traits: ['docker', 'make', 'systemd-run', 'git'],
+    defaultPrompt: 'Rebuild ai-chat-ui (npm run build in /opt/ai-chat-ui), safely restart ai-chat-ui.service via systemd-run --on-active=3s. Verify the service is active after restart and /health responds.' },
+  { id: 'okular',   idx: '09', name: 'Okular',   role: 'uptime · metrics · alerts',         domain: 'Monitoring',    traits: ['uptime', 'vmstat', 'iostat', 'loadavg'],
+    defaultPrompt: 'Build a VPS health report: uptime + loadavg, free -h, df -h, top 10 processes by %CPU and %MEM, iostat -xz 1 3, vmstat 1 3. Point out the bottleneck.' },
+  { id: 'maestro',  idx: '10', name: 'Maestro',  role: 'orchestrator · root · coordination', domain: 'Orchestration', traits: ['root', 'delegate', 'parallel', 'merge'],
+    defaultPrompt: 'Run a full VPS audit in parallel with ≥5 sub-agents: services, security, web, data, logs, network, deploy, monitoring. Split the work via POST /automations/delegate with parentSessionId=$KP_SESSION_ID and merge everything into a single report.' },
 ]
 
-/** Backwards-compatible — старый код всё ещё может импортить ROSTER, но
-    теперь это просто identity без runtime stats. */
+/** Backwards-compatible — older code may still import ROSTER, but it is now
+    just the identity table without runtime stats. */
 export const ROSTER = ROSTER_IDENTITY
 
 export interface Connection {
@@ -80,12 +80,12 @@ export interface Connection {
   state: 'active' | 'done'
 }
 
-/** @deprecated — оставлено для обратной совместимости. В UI используй
+/** @deprecated — kept for backwards compatibility. In the UI use
     buildConnectionsFromSessions(). */
 export const CONNECTIONS: Connection[] = []
 
 // ─── individual mascots ──────────────────────────────────────────────────────
-// BG — внутренний фон лица (тёмный фон карточки)
+// BG — inner face background (dark card background)
 const BG = 'var(--zek-bg-1)'
 
 interface MProps { size?: number; live?: boolean }
@@ -271,55 +271,55 @@ const REGISTRY: Record<MascotId, (p: MProps) => JSX.Element> = {
   okular: MOkular, maestro: MMaestro,
 }
 
-/** Универсальный рендерер маскота по id. */
+/** Universal mascot renderer by id. */
 export function Mascot({ id, size = 64, live = false }: { id: MascotId; size?: number; live?: boolean }) {
   const Cmp = REGISTRY[id]
   if (!Cmp) return null
   return <Cmp size={size} live={live} />
 }
 
-/** Эвристика: подобрать маскот по тексту названия сессии/задачи.
-    Порядок проверок — от самых специфичных к общим, чтобы Security всегда
-    ловила Шилд, а не Логан (хотя оба про auth.log). */
+/** Heuristic: pick a mascot based on the session/task name text.
+    Checks run from most specific to most general, so Security always
+    catches Shild rather than Logan (even though both deal with auth.log). */
 export function guessMascot(text: string): MascotId {
   const s = (text || '').toLowerCase()
 
-  // Security — Шилд: SSH, fail2ban, файервол, auth.log scan, brute force, secrets
-  if (/(ssh\b|sshd|fail2ban|iptables|firewall|ufw|nftables|whitelist|brute|harden|security|безопасн|sudoers|permitroot|passwordauth)/i.test(s)) return 'shild'
+  // Security — Shild: SSH, fail2ban, firewall, auth.log scan, brute force, secrets
+  if (/(ssh\b|sshd|fail2ban|iptables|firewall|ufw|nftables|whitelist|brute|harden|security|sudoers|permitroot|passwordauth)/i.test(s)) return 'shild'
 
-  // Web — Кэдди: Caddy, nginx, TLS, vhost, web stack
-  if (/(caddy|nginx|tls|ssl|https?\b|vhost|reverse[\s-]?proxy|let'?s.?encrypt|certbot|веб|web|http\/2)/i.test(s)) return 'keddi'
+  // Web — Keddi: Caddy, nginx, TLS, vhost, web stack
+  if (/(caddy|nginx|tls|ssl|https?\b|vhost|reverse[\s-]?proxy|let'?s.?encrypt|certbot|web|http\/2)/i.test(s)) return 'keddi'
 
-  // Data — Хранитель: БД, бэкапы
-  if (/(postgres|psql|redis|mysql|mongo|sqlite|backup|снапшот|snapshot|pg_dump|pg_restore|\bwal\b|dump|данные|datab)/i.test(s)) return 'hranitel'
+  // Data — Hranitel: databases, backups
+  if (/(postgres|psql|redis|mysql|mongo|sqlite|backup|snapshot|pg_dump|pg_restore|\bwal\b|dump|datab)/i.test(s)) return 'hranitel'
 
-  // Logs — Логан: журналы, grep
-  if (/(\blog\b|log\.|журнал|grep|awk|jq|loki|auth\.log|syslog|messages)/i.test(s)) return 'logan'
+  // Logs — Logan: logs, grep
+  if (/(\blog\b|log\.|grep|awk|jq|loki|auth\.log|syslog|messages)/i.test(s)) return 'logan'
 
-  // Network — Сигнал: DNS, curl, ping, mtr
-  if (/(\bdns\b|\bdig\b|\bping\b|curl|wget|mtr\b|tcpdump|traceroute|resolv|nslookup|сеть|network|сетев|резолв)/i.test(s)) return 'signal'
+  // Network — Signal: DNS, curl, ping, mtr
+  if (/(\bdns\b|\bdig\b|\bping\b|curl|wget|mtr\b|tcpdump|traceroute|resolv|nslookup|network)/i.test(s)) return 'signal'
 
-  // Integrations / MCP — Мостик: туннели, proxy, stack-wide
-  if (/(\bmcp\b|tunnel|туннель|wireguard|stunnel|bridge|мост|интеграц|playwright|hermes|kimi-mcp|kimi-proxy|kimi.proxy)/i.test(s)) return 'mostik'
+  // Integrations / MCP — Mostik: tunnels, proxy, stack-wide
+  if (/(\bmcp\b|tunnel|wireguard|stunnel|bridge|integrat|playwright|hermes|kimi-mcp|kimi-proxy|kimi.proxy)/i.test(s)) return 'mostik'
 
-  // Deploy / CI — Кувалд: сборки, файлы кода, docker
-  if (/(deploy|build|docker|make|rebuild|git\b|push|сборк|деплой|компил|\.css|\.js\b|\.html|\.md\b|app[-\.]?js|styles[-\.]?css|hero[-\.]?html|footer[-\.]?html|features[-\.]?html|readme[-\.]?md)/i.test(s)) return 'kuvald'
+  // Deploy / CI — Kuvald: builds, code files, docker
+  if (/(deploy|build|docker|make|rebuild|git\b|push|compil|\.css|\.js\b|\.html|\.md\b|app[-\.]?js|styles[-\.]?css|hero[-\.]?html|footer[-\.]?html|features[-\.]?html|readme[-\.]?md)/i.test(s)) return 'kuvald'
 
-  // Monitoring — Окуляр: uptime, метрики, ресурсы, диск/память
-  if (/(uptime|metric|метрик|vmstat|iostat|loadavg|monitor|мониторинг|здоров|health|disk|memory|диск|память|\bcpu\b|\bram\b|\bvps\b\s*health)/i.test(s)) return 'okular'
+  // Monitoring — Okular: uptime, metrics, resources, disk/memory
+  if (/(uptime|metric|vmstat|iostat|loadavg|monitor|health|disk|memory|\bcpu\b|\bram\b|\bvps\b\s*health)/i.test(s)) return 'okular'
 
-  // Orchestration / audit — Маэстро: root, audit, delegation
-  if (/(orchestr|оркестратор|\broot\b|delegate|parallel|audit|аудит|sub[-\s]?agent|саб[-\s]?агент|coordin|корень|main)/i.test(s)) return 'maestro'
+  // Orchestration / audit — Maestro: root, audit, delegation
+  if (/(orchestr|\broot\b|delegate|parallel|audit|sub[-\s]?agent|coordin|main)/i.test(s)) return 'maestro'
 
-  // Services / systemd — Систо: сервисы, контейнеры, юниты
-  if (/(systemd|systemctl|journalctl|сервис|service\b|unit\b|container|контейнер|таймер|timer\b|process|процесс)/i.test(s)) return 'sisto'
+  // Services / systemd — Sisto: services, containers, units
+  if (/(systemd|systemctl|journalctl|service\b|unit\b|container|timer\b|process)/i.test(s)) return 'sisto'
 
-  return 'maestro' // fallback — общий оркестратор/чат
+  return 'maestro' // fallback — general orchestrator/chat
 }
 
 // ─── live state computation from real server sessions ────────────────────
 
-/** Минимальный shape серверной сессии нужный нам — компат с AgentSession. */
+/** Minimal server-session shape we need — compatible with AgentSession. */
 export interface ServerSessionLike {
   id: string
   name: string
@@ -329,37 +329,37 @@ export interface ServerSessionLike {
   parentSessionId?: string | null
 }
 
-/** Возраст в мс с последнего использования. */
+/** Age in ms since last use. */
 function ageMs(s: ServerSessionLike): number {
   return Date.now() - (s.lastUsedAt || 0)
 }
 
-/** Активна ли сессия прямо сейчас (последняя активность < 90с). */
+/** Whether the session is active right now (last activity < 90s ago). */
 function isLiveSession(s: ServerSessionLike): boolean {
   return ageMs(s) < 90_000 && s.turns > 0
 }
 
-/** Человеко-читаемый runtime. */
+/** Human-readable runtime. */
 function formatRuntime(ms: number): string {
   const sec = Math.floor(ms / 1000)
-  if (sec < 60) return `${sec}с назад`
+  if (sec < 60) return `${sec}s ago`
   const min = Math.floor(sec / 60)
-  if (min < 60) return `${min}м назад`
+  if (min < 60) return `${min}m ago`
   const h = Math.floor(min / 60)
-  if (h < 24) return `${h}ч назад`
-  return `${Math.floor(h / 24)}д назад`
+  if (h < 24) return `${h}h ago`
+  return `${Math.floor(h / 24)}d ago`
 }
 
 /**
- * Собрать live-ростер маскотов из реальных сессий.
- * Каждая сессия маппится на маскота через guessMascot(name+prompt), и для
- * каждого маскота берём:
- *   • status — active если есть свежая (<90с) сессия с turns>0, ready если
- *     была недавняя сессия, idle если вообще нет
- *   • turns — сумма turns всех сессий этого маскота
- *   • lastTask — name самой свежей сессии
- *   • runtime — formatRuntime от lastUsedAt самой свежей сессии
- *   • sessionId — id самой свежей сессии (для прямого открытия)
+ * Build the live mascot roster from real sessions.
+ * Each session maps to a mascot via guessMascot(name+prompt), and for
+ * each mascot we take:
+ *   • status — active if there is a fresh (<90s) session with turns>0, ready if
+ *     there was a recent session, idle if there are none at all
+ *   • turns — sum of turns across all of this mascot's sessions
+ *   • lastTask — name of the most recent session
+ *   • runtime — formatRuntime of the most recent session's lastUsedAt
+ *   • sessionId — id of the most recent session (for opening it directly)
  */
 export function buildRosterFromSessions(sessions: ServerSessionLike[]): MascotMeta[] {
   // bucket sessions by mascot
@@ -376,7 +376,7 @@ export function buildRosterFromSessions(sessions: ServerSessionLike[]): MascotMe
       return {
         ...ident,
         status: 'idle' as MascotStatus,
-        statusLabel: 'ждёт',
+        statusLabel: 'idle',
         lastTask: '—',
         turns: 0,
         runtime: '—',
@@ -388,7 +388,7 @@ export function buildRosterFromSessions(sessions: ServerSessionLike[]): MascotMe
     return {
       ...ident,
       status: live ? ('active' as MascotStatus) : ('ready' as MascotStatus),
-      statusLabel: live ? 'идёт' : 'готов',
+      statusLabel: live ? 'working' : 'ready',
       lastTask: latest.name.length > 80 ? latest.name.slice(0, 80) + '…' : latest.name,
       turns: totalTurns,
       runtime: formatRuntime(ageMs(latest)),
@@ -398,15 +398,15 @@ export function buildRosterFromSessions(sessions: ServerSessionLike[]): MascotMe
 }
 
 /**
- * Собрать живые дуги делегирования между маскотами из реальных
- * parent→child связей в сессиях.
- *   • если parent активен И child активен → state='active' (бегущая пунктирка)
- *   • если parent есть но никто из них не активен → state='done' (статика)
- *   • self-loops (parent и child мапятся на один маскот) — отбрасываем
+ * Build live delegation arcs between mascots from real
+ * parent→child links in the sessions.
+ *   • if the parent is active AND the child is active → state='active' (running dashes)
+ *   • if there is a parent but neither is active → state='done' (static)
+ *   • self-loops (parent and child map to the same mascot) are dropped
  */
 export function buildConnectionsFromSessions(sessions: ServerSessionLike[]): Connection[] {
   const byId = new Map(sessions.map((s) => [s.id, s]))
-  const edges = new Map<string, Connection>() // ключ "from→to" для дедупа
+  const edges = new Map<string, Connection>() // "from→to" key for dedupe
   for (const child of sessions) {
     if (!child.parentSessionId) continue
     const parent = byId.get(child.parentSessionId)
@@ -417,7 +417,7 @@ export function buildConnectionsFromSessions(sessions: ServerSessionLike[]): Con
     const key = `${fromM}→${toM}`
     const isActive = isLiveSession(parent) || isLiveSession(child)
     const prev = edges.get(key)
-    // active побеждает done
+    // active wins over done
     if (!prev || (isActive && prev.state === 'done')) {
       edges.set(key, { from: fromM, to: toM, state: isActive ? 'active' : 'done' })
     }
@@ -425,7 +425,7 @@ export function buildConnectionsFromSessions(sessions: ServerSessionLike[]): Con
   return [...edges.values()]
 }
 
-/** Найти identity по id (для UI хелперов). */
+/** Find an identity by id (for UI helpers). */
 export function findMascot(id: MascotId): MascotIdentity | undefined {
   return ROSTER_IDENTITY.find((m) => m.id === id)
 }

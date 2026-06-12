@@ -51,7 +51,7 @@ export function AgentPicker({ agentId, onChange, compact = true }: AgentPickerPr
             ? `bg-white/[0.04] hover:bg-white/[0.08] ${active.persona.ringClass.replace('ring-', 'border-')} ${active.persona.labelClass}`
             : 'bg-white/[0.02] hover:bg-white/[0.05] border-white/10 text-white/55 hover:text-white/85')
         }
-        title={active?.description || 'Выбрать агента'}
+        title={active?.description || 'Choose an agent'}
       >
         {active ? (
           <>
@@ -68,7 +68,7 @@ export function AgentPicker({ agentId, onChange, compact = true }: AgentPickerPr
         ) : (
           <>
             <Users className="w-3.5 h-3.5" />
-            <span>Агент</span>
+            <span>Agent</span>
           </>
         )}
         <ChevronDown className={'w-3 h-3 opacity-60 transition-transform ' + (open ? 'rotate-180' : '')} />
@@ -85,7 +85,7 @@ export function AgentPicker({ agentId, onChange, compact = true }: AgentPickerPr
             className="absolute bottom-full mb-1.5 left-0 min-w-[260px] z-50 rounded-lg border border-white/10 bg-[#0b0a14]/95 backdrop-blur-xl shadow-2xl overflow-hidden"
           >
             <div className="px-3 py-2 text-[10px] uppercase tracking-[0.14em] text-white/40 border-b border-white/[0.05]">
-              Кастомные агенты · {agents.length}
+              Custom agents · {agents.length}
             </div>
             <button
               type="button"
@@ -96,11 +96,11 @@ export function AgentPicker({ agentId, onChange, compact = true }: AgentPickerPr
               }
             >
               <span className="w-7 h-7 grid place-items-center bg-white/[0.04] border border-white/10 rounded text-white/45 text-[10px] uppercase">
-                по умолч.
+                default
               </span>
               <div className="flex-1 min-w-0 text-left">
-                <div className="truncate">Стандартный Kimi</div>
-                <div className="text-[10.5px] text-white/40 truncate">Без специализации</div>
+                <div className="truncate">Standard Kimi</div>
+                <div className="text-[10.5px] text-white/40 truncate">No specialization</div>
               </div>
               {!agentId && <Check className="w-4 h-4 text-emerald-300" />}
             </button>
@@ -135,7 +135,7 @@ export function AgentPicker({ agentId, onChange, compact = true }: AgentPickerPr
               )
             })}
             <div className="px-3 py-1.5 text-[10px] text-white/30 border-t border-white/[0.05]">
-              Чтобы добавить агента — отредактируй <code className="text-white/55">/opt/kimi-mcp-proxy/agents.json</code>
+              To add an agent, edit <code className="text-white/55">/opt/kimi-mcp-proxy/agents.json</code>
             </div>
           </motion.div>
         )}

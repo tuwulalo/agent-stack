@@ -65,7 +65,7 @@ export async function GET(
     maxAge: THIRTY_DAYS_MS / 1000,
     path: '/',
   })
-  // подчищаем временные куки
+  // clean up the temporary cookies
   res.cookies.set('oauth_state', '', { maxAge: 0, path: '/' })
   res.cookies.set('oauth_next', '', { maxAge: 0, path: '/' })
   return res

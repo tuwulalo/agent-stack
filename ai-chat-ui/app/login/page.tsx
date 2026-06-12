@@ -8,7 +8,7 @@ export default function LoginPage() {
   const [err, setErr] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
-  // Ошибки от OAuth-callback: /login?error=not-allowed:foo@bar.com
+  // Errors from the OAuth callback: /login?error=not-allowed:foo@bar.com
   useEffect(() => {
     const e = new URLSearchParams(window.location.search).get('error')
     if (e) setErr(decodeURIComponent(e))
@@ -37,7 +37,7 @@ export default function LoginPage() {
       // Hard navigation so middleware runs and the cookie takes effect.
       window.location.href = next
     } catch (e) {
-      setErr((e as Error).message || 'Не удалось войти')
+      setErr((e as Error).message || 'Failed to sign in')
     } finally {
       setLoading(false)
     }
@@ -89,10 +89,10 @@ export default function LoginPage() {
           </div>
         </div>
         <div style={{ color: 'rgba(255,255,255,0.45)', fontSize: 13, marginBottom: 20 }}>
-          Вход для администратора
+          Administrator sign-in
         </div>
 
-        <label style={labelStyle}>Логин</label>
+        <label style={labelStyle}>Username</label>
         <input
           autoFocus
           value={u}
@@ -101,7 +101,7 @@ export default function LoginPage() {
           style={inputStyle}
         />
 
-        <label style={{ ...labelStyle, marginTop: 14 }}>Пароль</label>
+        <label style={{ ...labelStyle, marginTop: 14 }}>Password</label>
         <input
           type="password"
           value={p}
@@ -146,13 +146,13 @@ export default function LoginPage() {
             transition: 'transform 0.05s',
           }}
         >
-          {loading ? 'Вход…' : 'Войти'}
+          {loading ? 'Signing in…' : 'Sign in'}
         </button>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '18px 0' }}>
           <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.08)' }} />
           <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', letterSpacing: '0.08em' }}>
-            ИЛИ
+            OR
           </div>
           <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.08)' }} />
         </div>
@@ -162,14 +162,14 @@ export default function LoginPage() {
           style={oauthBtnStyle}
         >
           <span style={{ fontSize: 16 }}></span>
-          Войти через GitHub
+          Continue with GitHub
         </a>
         <a
           href={`/api/auth/oauth/google/start?next=${encodeURIComponent(next)}`}
           style={{ ...oauthBtnStyle, marginTop: 8 }}
         >
           <span style={{ fontSize: 16 }}>G</span>
-          Войти через Google
+          Continue with Google
         </a>
       </form>
     </div>

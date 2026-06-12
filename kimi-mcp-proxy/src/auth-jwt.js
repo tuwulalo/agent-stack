@@ -1,9 +1,9 @@
 /**
- * Минимальная реализация JWT HS256 без зависимостей.
- * Используется для долгоживущих access-токенов, выданных через device-flow.
+ * Minimal dependency-free JWT HS256 implementation.
+ * Used for long-lived access tokens issued via the device flow.
  *
- * Алгоритм фиксирован: HS256 (HMAC-SHA256). Никаких alg:none, никакой
- * поддержки RS256/ES256 — это сокращает атакующую поверхность.
+ * The algorithm is fixed: HS256 (HMAC-SHA256). No alg:none, no
+ * RS256/ES256 support — this reduces the attack surface.
  */
 import crypto from 'node:crypto';
 
@@ -33,8 +33,8 @@ function getSecret() {
 }
 
 /**
- * Подписать токен. payload должен быть JSON-сериализуемым объектом.
- * Опционально expiresInSec — добавит exp.
+ * Sign a token. payload must be a JSON-serializable object.
+ * Optional expiresInSec — adds exp.
  */
 export function signJwt(payload, expiresInSec) {
   const header = { alg: 'HS256', typ: 'JWT' };
@@ -50,7 +50,7 @@ export function signJwt(payload, expiresInSec) {
 }
 
 /**
- * Проверить токен. Возвращает payload или null.
+ * Verify a token. Returns the payload or null.
  */
 export function verifyJwt(token) {
   if (typeof token !== 'string') return null;

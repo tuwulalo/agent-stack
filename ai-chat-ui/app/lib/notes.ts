@@ -9,9 +9,9 @@ export interface NoteSummary {
 }
 
 const SYSTEM_TITLES: Record<string, string> = {
-  'facts.md':     'Факты',
-  'decisions.md': 'Решения',
-  'summary.md':   'Кратко',
+  'facts.md':     'Facts',
+  'decisions.md': 'Decisions',
+  'summary.md':   'Summary',
 }
 
 export function noteTitle(name: string): string {
@@ -90,15 +90,15 @@ export async function regenerateDigest(
 }
 
 export function formatBytes(n: number): string {
-  if (n < 1024) return `${n} Б`
-  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} КБ`
-  return `${(n / 1024 / 1024).toFixed(2)} МБ`
+  if (n < 1024) return `${n} B`
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`
+  return `${(n / 1024 / 1024).toFixed(2)} MB`
 }
 
 export function formatRelTime(ms: number): string {
   const diff = Date.now() - ms
-  if (diff < 60_000) return 'только что'
-  if (diff < 60 * 60_000) return `${Math.floor(diff / 60_000)} мин назад`
-  if (diff < 24 * 60 * 60_000) return `${Math.floor(diff / (60 * 60_000))} ч назад`
-  return new Date(ms).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
+  if (diff < 60_000) return 'just now'
+  if (diff < 60 * 60_000) return `${Math.floor(diff / 60_000)} min ago`
+  if (diff < 24 * 60 * 60_000) return `${Math.floor(diff / (60 * 60_000))} h ago`
+  return new Date(ms).toLocaleString('en-US', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
 }

@@ -26,16 +26,16 @@ export function Sidebar({ sessions, activeId, onSelect, onNew, onDelete }: Props
       <div className="sidebar-section">
         <button className="new-chat" onClick={onNew}>
           <PlusIcon />
-          <span>Новый чат</span>
+          <span>New chat</span>
         </button>
       </div>
 
-      <div className="section-label">Сессии</div>
+      <div className="section-label">Sessions</div>
 
       <div className="session-list">
         {sessions.length === 0 ? (
           <div style={{ padding: '8px 12px', fontSize: 12.5, color: 'var(--text-tertiary)' }}>
-            Пока пусто. Создай первый чат.
+            Nothing here yet. Start your first chat.
           </div>
         ) : (
           sessions.map(s => (
@@ -44,11 +44,11 @@ export function Sidebar({ sessions, activeId, onSelect, onNew, onDelete }: Props
               className={`session ${s.id === activeId ? 'active' : ''}`}
               onClick={() => onSelect(s.id)}
             >
-              <span className="session-title">{s.title || 'Без названия'}</span>
+              <span className="session-title">{s.title || 'Untitled'}</span>
               <button
                 className="session-delete"
                 onClick={(e) => { e.stopPropagation(); onDelete(s.id) }}
-                aria-label="Удалить сессию"
+                aria-label="Delete session"
               >
                 <TrashIcon />
               </button>

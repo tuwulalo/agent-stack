@@ -14,12 +14,12 @@ import type { SubagentResult, SubagentTask } from '../lib/agent'
 function statusInfo(status?: string | null) {
   const s = (status || '').toLowerCase()
   if (s.includes('compl') || s === 'ok' || s === 'done')
-    return { Icon: Check, fg: 'text-emerald-300', bg: 'bg-emerald-500/15', label: 'готово' }
+    return { Icon: Check, fg: 'text-emerald-300', bg: 'bg-emerald-500/15', label: 'done' }
   if (s.includes('fail') || s.includes('error'))
-    return { Icon: AlertTriangle, fg: 'text-red-300', bg: 'bg-red-500/15', label: 'ошибка' }
+    return { Icon: AlertTriangle, fg: 'text-red-300', bg: 'bg-red-500/15', label: 'error' }
   if (s.includes('pending') || s.includes('running') || s.includes('wait'))
-    return { Icon: Hourglass, fg: 'text-amber-300', bg: 'bg-amber-500/15', label: 'ждёт' }
-  return { Icon: Hourglass, fg: 'text-white/55', bg: 'bg-white/[0.06]', label: status || 'в работе' }
+    return { Icon: Hourglass, fg: 'text-amber-300', bg: 'bg-amber-500/15', label: 'waiting' }
+  return { Icon: Hourglass, fg: 'text-white/55', bg: 'bg-white/[0.06]', label: status || 'in progress' }
 }
 
 function previewText(s: string, n: number) {
@@ -71,11 +71,11 @@ export function SubagentDebate({ subtasks, results, streaming }: SubagentDebateP
         className="w-full flex items-center gap-2 px-3 py-2 text-[11.5px] text-white/80 hover:text-white hover:bg-white/[0.03] transition"
       >
         <Users className="w-3.5 h-3.5 text-cyan-300/85" />
-        <span className="uppercase tracking-[0.1em] text-cyan-200/85">Дебаты</span>
+        <span className="uppercase tracking-[0.1em] text-cyan-200/85">Debate</span>
         <span className="text-white/40">·</span>
         <span className="text-white/65">
-          {count} саб-агент{count === 1 ? '' : count < 5 ? 'а' : 'ов'}
-          {res.length > 0 && ` · ${completed}/${count} ответили`}
+          {count} sub-agent{count === 1 ? '' : 's'}
+          {res.length > 0 && ` · ${completed}/${count} responded`}
         </span>
         {streaming && (
           <span className="ml-1 flex items-center gap-1 text-[10px] text-cyan-300/80">
@@ -120,7 +120,7 @@ export function SubagentDebate({ subtasks, results, streaming }: SubagentDebateP
                     'hover:bg-black/50 hover:scale-[1.01] cursor-pointer ' +
                     c.persona.ringClass + ' ' + c.persona.glowClass
                   }
-                  title={`${c.persona.name} · ${st.label} — открыть полную работу`}
+                  title={`${c.persona.name} · ${st.label} — open the full work`}
                 >
                   <div className="flex items-center gap-1.5 mb-1">
                     <span className="w-6 h-6 grid place-items-center bg-black/50 ring-1 ring-white/10 rounded overflow-hidden flex-shrink-0">
@@ -148,7 +148,7 @@ export function SubagentDebate({ subtasks, results, streaming }: SubagentDebateP
                   )}
                   {c.goal && (
                     <div className="text-[11px] text-white/55 mb-1.5 leading-snug">
-                      <span className="text-white/35 mr-1">цель:</span>
+                      <span className="text-white/35 mr-1">goal:</span>
                       {previewText(c.goal, 80)}
                     </div>
                   )}
@@ -160,13 +160,13 @@ export function SubagentDebate({ subtasks, results, streaming }: SubagentDebateP
                       </div>
                       {c.error
                         ? previewText(c.error, 160)
-                        : <span className="text-white/40 italic">детали в окне</span>}
+                        : <span className="text-white/40 italic">details in the window</span>}
                     </div>
                   ) : (
                     <div className="text-[12px] text-white/85 leading-[1.45] line-clamp-4">
                       {c.summary
                         ? previewText(c.summary, 220)
-                        : <span className="text-white/40 italic">думает…</span>}
+                        : <span className="text-white/40 italic">thinking…</span>}
                     </div>
                   )}
                   {c.toolTrace && c.toolTrace.length > 0 && (
@@ -284,7 +284,7 @@ function SubagentDetail({ card, onClose }: SubagentDetailProps) {
                   {card.persona.name}
                 </span>
                 <span className="text-[10.5px] text-white/45 uppercase tracking-wider">
-                  саб-агент #{card.index + 1}
+                  sub-agent #{card.index + 1}
                   {card.role && ` · ${card.role}`}
                 </span>
               </div>
@@ -309,7 +309,7 @@ function SubagentDetail({ card, onClose }: SubagentDetailProps) {
                   onClose()
                 }}
                 className="w-8 h-8 grid place-items-center rounded-md text-white/55 hover:text-white hover:bg-white/[0.06]"
-                aria-label="Закрыть"
+                aria-label="Close"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -325,7 +325,7 @@ function SubagentDetail({ card, onClose }: SubagentDetailProps) {
                 {card.goal && (
                   <div>
                     <div className="text-[10.5px] uppercase text-white/35 tracking-wider mb-0.5">
-                      цель
+                      goal
                     </div>
                     <div className="text-white/85 leading-[1.5] whitespace-pre-wrap break-words">
                       {card.goal}
@@ -335,7 +335,7 @@ function SubagentDetail({ card, onClose }: SubagentDetailProps) {
                 {card.context && (
                   <div>
                     <div className="text-[10.5px] uppercase text-white/35 tracking-wider mb-0.5">
-                      контекст
+                      context
                     </div>
                     <div className="text-white/70 leading-[1.5] whitespace-pre-wrap break-words text-[12.5px]">
                       {card.context}
@@ -371,7 +371,7 @@ function SubagentDetail({ card, onClose }: SubagentDetailProps) {
               <section className="px-4 py-3 border-b border-white/[0.05]">
                 <div className="flex items-center gap-1.5 mb-2 text-[10px] uppercase tracking-[0.14em] text-white/45">
                   <MessageSquare className="w-3 h-3" />
-                  что пробовал сделать ({card.toolTrace.length} вызов{card.toolTrace.length === 1 ? '' : card.toolTrace.length < 5 ? 'а' : 'ов'})
+                  what it tried ({card.toolTrace.length} call{card.toolTrace.length === 1 ? '' : 's'})
                 </div>
                 <div className="space-y-1">
                   {card.toolTrace.map((tt, i) => {
@@ -433,7 +433,7 @@ function SubagentDetail({ card, onClose }: SubagentDetailProps) {
                 </div>
               )}
               <div className="text-[14px] text-white/90 md leading-[1.6]">
-                <Markdown text={card.summary || '_(саб-агент не дал текстового ответа)_'} />
+                <Markdown text={card.summary || '_(the sub-agent gave no text response)_'} />
               </div>
             </section>
           </motion.div>

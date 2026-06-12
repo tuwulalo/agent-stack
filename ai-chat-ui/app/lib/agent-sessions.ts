@@ -79,8 +79,8 @@ export const getSessionHistory = (id: string) =>
 
 export function formatRel(ms: number): string {
   const diff = Date.now() - ms
-  if (diff < 60_000) return 'только что'
-  if (diff < 60 * 60_000) return `${Math.floor(diff / 60_000)} мин назад`
-  if (diff < 24 * 60 * 60_000) return `${Math.floor(diff / (60 * 60_000))} ч назад`
-  return new Date(ms).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' })
+  if (diff < 60_000) return 'just now'
+  if (diff < 60 * 60_000) return `${Math.floor(diff / 60_000)} min ago`
+  if (diff < 24 * 60 * 60_000) return `${Math.floor(diff / (60 * 60_000))} h ago`
+  return new Date(ms).toLocaleDateString('en-US', { day: '2-digit', month: '2-digit' })
 }

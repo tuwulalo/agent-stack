@@ -78,13 +78,13 @@ export const listRuns = (opts: { limit?: number; scheduleId?: string } = {}) => 
 
 // Common cron presets shown in the UI
 export const CRON_PRESETS: Array<{ label: string; expr: string }> = [
-  { label: 'Каждые 5 минут',      expr: '*/5 * * * *' },
-  { label: 'Каждый час (0 мин)',  expr: '0 * * * *' },
-  { label: 'Каждые 6 часов',      expr: '0 */6 * * *' },
-  { label: 'Ежедневно 09:00',     expr: '0 9 * * *' },
-  { label: 'Ежедневно 21:00',     expr: '0 21 * * *' },
-  { label: 'По понедельникам 09:00', expr: '0 9 * * 1' },
-  { label: 'Первое число месяца 00:30', expr: '30 0 1 * *' },
+  { label: 'Every 5 minutes',     expr: '*/5 * * * *' },
+  { label: 'Every hour (at :00)', expr: '0 * * * *' },
+  { label: 'Every 6 hours',       expr: '0 */6 * * *' },
+  { label: 'Daily at 09:00',      expr: '0 9 * * *' },
+  { label: 'Daily at 21:00',      expr: '0 21 * * *' },
+  { label: 'Mondays at 09:00',    expr: '0 9 * * 1' },
+  { label: '1st of the month at 00:30', expr: '30 0 1 * *' },
 ]
 
 export function describeCron(expr: string): string {
@@ -96,17 +96,17 @@ export function describeCron(expr: string): string {
 export function formatRelTime(ms: number | null | undefined): string {
   if (!ms) return '—'
   const diff = Date.now() - ms
-  if (diff < 60_000) return 'только что'
-  if (diff < 60 * 60_000) return `${Math.floor(diff / 60_000)} мин назад`
-  if (diff < 24 * 60 * 60_000) return `${Math.floor(diff / (60 * 60_000))} ч назад`
-  return new Date(ms).toLocaleString('ru-RU', {
+  if (diff < 60_000) return 'just now'
+  if (diff < 60 * 60_000) return `${Math.floor(diff / 60_000)} min ago`
+  if (diff < 24 * 60 * 60_000) return `${Math.floor(diff / (60 * 60_000))} h ago`
+  return new Date(ms).toLocaleString('en-US', {
     day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
   })
 }
 
 export function formatDuration(ms: number): string {
-  if (ms < 1000) return `${ms} мс`
-  if (ms < 60_000) return `${(ms / 1000).toFixed(1)} с`
-  if (ms < 3_600_000) return `${Math.floor(ms / 60_000)}м ${Math.floor((ms % 60_000) / 1000)}с`
-  return `${Math.floor(ms / 3_600_000)}ч ${Math.floor((ms % 3_600_000) / 60_000)}м`
+  if (ms < 1000) return `${ms} ms`
+  if (ms < 60_000) return `${(ms / 1000).toFixed(1)} s`
+  if (ms < 3_600_000) return `${Math.floor(ms / 60_000)}m ${Math.floor((ms % 60_000) / 1000)}s`
+  return `${Math.floor(ms / 3_600_000)}h ${Math.floor((ms % 3_600_000) / 60_000)}m`
 }

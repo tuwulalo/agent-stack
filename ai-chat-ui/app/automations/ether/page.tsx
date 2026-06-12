@@ -12,18 +12,18 @@ import { JsonOrText } from '../../components/JsonView'
 import { TweaksPanel } from '../../components/TweaksPanel'
 
 /**
- * «Эфир» — граф диалогов между ИИ-агентами (из v2 zek handoff).
- * 10 маскотов = тайлы на гриде, дуги между ними = реальные parent→child
- * delegate-связи в сессиях. Толщина дуги = кол-во реплик. Цвет:
- *   • active (фиолет, бегущий пунктир) — если оба маскота сейчас активны
- *   • warm (зелёный) — кто-то один активен
- *   • cold (серый) — оба тихие
+ * "Ether" — a graph of conversations between AI agents (from the v2 zek handoff).
+ * 10 mascots = tiles on a grid, arcs between them = real parent→child
+ * delegate links in sessions. Arc thickness = message count. Color:
+ *   • active (violet, running dashes) — both mascots are currently active
+ *   • warm (green) — one of them is active
+ *   • cold (gray) — both are quiet
  *
- * Клик по дуге → панель справа с диалогом (delegate = промпт оркестратора,
- * reply = lastSummary воркера). Клик по маскоту → фокус-фильтр.
+ * Click an arc → right panel with the dialogue (delegate = orchestrator's prompt,
+ * reply = worker's lastSummary). Click a mascot → focus filter.
  */
 
-// фиксированные позиции тайлов на canvas — % от размера контейнера
+// fixed tile positions on the canvas — % of the container size
 const NODE_POSITIONS: Record<MascotId, { x: number; y: number }> = {
   maestro:  { x: 50, y: 14 },
   mostik:   { x: 30, y: 50 },
@@ -38,14 +38,14 @@ const NODE_POSITIONS: Record<MascotId, { x: number; y: number }> = {
 }
 
 interface EtherMessage {
-  t: string                 // время для отображения
-  ts: number                // timestamp для сортировки
+  t: string                 // display time
+  ts: number                // timestamp for sorting
   from: MascotId
   to: MascotId
   type: 'delegate' | 'reply'
   msg: string
   detail?: string
-  sessionId?: string        // чтоб можно было открыть конкретную сессию
+  sessionId?: string        // so a specific session can be opened
 }
 
 interface EtherEdge {
@@ -55,7 +55,7 @@ interface EtherEdge {
   messages: EtherMessage[]
 }
 
-/** Превратить серверные сессии в feed диалогов и edges между маскотами. */
+/** Turn server sessions into a dialogue feed and edges between mascots. */
 function buildEtherFromSessions(sessions: AgentSession[], resolve: (s: AgentSession) => MascotId = (s) => guessMascot((s.name || '') + ' ' + (s.lastPrompt || ''))): { feed: EtherMessage[]; edges: EtherEdge[]; mascotMsgCounts: Partial<Record<MascotId, number>>; mascotActive: Set<MascotId> } {
   const byId = new Map(sessions.map((s) => [s.id, s]))
   const feed: EtherMessage[] = []
@@ -66,7 +66,7 @@ function buildEtherFromSessions(sessions: AgentSession[], resolve: (s: AgentSess
     const from: MascotId = resolve(parent)
     const to: MascotId = resolve(child)
     if (from === to) continue // self-loop skip
-    // delegate event = parent позвал child с задачей
+    // delegate event = parent called the child with a task
     const delegateTs = child.createdAt || child.lastUsedAt || Date.now()
     feed.push({
       t: formatTime(delegateTs),
@@ -74,11 +74,11 @@ function buildEtherFromSessions(sessions: AgentSession[], resolve: (s: AgentSess
       from,
       to,
       type: 'delegate',
-      msg: child.name || child.lastPrompt?.slice(0, 100) || '— задача —',
-      detail: child.lastPrompt ? `задача: ${child.lastPrompt.slice(0, 240)}` : undefined,
+      msg: child.name || child.lastPrompt?.slice(0, 100) || '— task —',
+      detail: child.lastPrompt ? `task: ${child.lastPrompt.slice(0, 240)}` : undefined,
       sessionId: child.id,
     })
-    // reply event = если child что-то ответил (есть lastSummary), считаем что он responded
+    // reply event = if the child answered something (has lastSummary), count it as responded
     if (child.lastSummary && child.turns > 0) {
       feed.push({
         t: formatTime(child.lastUsedAt || Date.now()),
@@ -87,14 +87,14 @@ function buildEtherFromSessions(sessions: AgentSession[], resolve: (s: AgentSess
         to: from,
         type: 'reply',
         msg: child.lastSummary,
-        detail: `от: ${child.name}`,
+        detail: `from: ${child.name}`,
         sessionId: child.id,
       })
     }
   }
   feed.sort((a, b) => a.ts - b.ts)
 
-  // build edges (одна на пару маскотов)
+  // build edges (one per mascot pair)
   const edgeMap = new Map<string, EtherEdge>()
   for (const r of feed) {
     const a = r.from < r.to ? r.from : r.to
@@ -148,7 +148,7 @@ interface NodeTileProps {
   focused: boolean
   dimmed: boolean
   onClick: () => void
-  /** Реальное имя сессии (воркера) — показываем вместо имени персоны */
+  /** Real session (worker) name — shown instead of the persona name */
   name?: string
 }
 function NodeTile({ mid, active, msgCount, focused, dimmed, onClick, name }: NodeTileProps) {
@@ -164,7 +164,7 @@ function NodeTile({ mid, active, msgCount, focused, dimmed, onClick, name }: Nod
       <span className="zek-node-status"><StatusDot active={active} /></span>
       <Mascot id={mid} size={42} live={active} />
       <span className="zek-node-name">{name || ident.name}</span>
-      <span className="zek-node-meta">{msgCount > 0 ? `${msgCount} реплик` : ident.domain.toLowerCase()}</span>
+      <span className="zek-node-meta">{msgCount > 0 ? `${msgCount} messages` : ident.domain.toLowerCase()}</span>
     </button>
   )
 }
@@ -176,10 +176,10 @@ export default function EtherPage() {
   const [selectedEdge, setSelectedEdge] = useState<string | null>(null)
   const [hoverEdge, setHoverEdge] = useState<string | null>(null)
   const [focusAgent, setFocusAgent] = useState<MascotId | null>(null)
-  /** Set of edge ids that appeared in the last refresh — для flash-анимации. */
+  /** Set of edge ids that appeared in the last refresh — for the flash animation. */
   const [newEdgeIds, setNewEdgeIds] = useState<Set<string>>(new Set())
-  /** focusSessionId из ?focus=<sid> URL param — сессия которую только что
-      запустил юзер (подсветим её маскота + auto-select его edge). */
+  /** focusSessionId from the ?focus=<sid> URL param — the session the user
+      just started (highlight its mascot + auto-select its edge). */
   const [focusSessionId, setFocusSessionId] = useState<string | null>(null)
   const canvasRef = useRef<HTMLDivElement>(null)
   const [paths, setPaths] = useState<Array<{ id: string; d: string; count: number; state: 'cold' | 'warm' | 'active'; midX: number; midY: number }>>([])
@@ -209,7 +209,7 @@ export default function EtherPage() {
     if (typeof window === 'undefined') return
     const params = new URLSearchParams(window.location.search)
     const f = params.get('focus')
-    // Нет ?focus= → наводимся на новейший ран (а не на всю историю).
+    // No ?focus= → point at the newest run (not the whole history).
     setFocusSessionId(f || '__pending__')
   }, [])
 
@@ -241,9 +241,9 @@ export default function EtherPage() {
     return () => { cancelled = true; clearInterval(id) }
   }, [])
 
-  // Self-heal: окно открыли на sentinel '__pending__' (свежий запуск, id ещё
-  // неизвестен). Как только в поллинге появится новейшая root-сессия —
-  // наводимся на неё сами, не завися от навигации из opener-окна.
+  // Self-heal: the window opened on the '__pending__' sentinel (fresh run, id
+  // not known yet). As soon as the newest root session shows up in polling,
+  // point at it ourselves without depending on navigation from the opener window.
   useEffect(() => {
     if (focusSessionId !== '__pending__') return
     const roots = sessions.filter((s) => !s.parentSessionId)
@@ -252,7 +252,7 @@ export default function EtherPage() {
     setFocusSessionId(newest.id)
   }, [sessions, focusSessionId])
 
-  /** Множество id сессий в дереве фокус-сессии (root + все потомки BFS). */
+  /** Set of session ids in the focus session's tree (root + all BFS descendants). */
   const treeSessionIds = useMemo(() => {
     if (!focusSessionId) return null // null = no filter
     const ids = new Set<string>([focusSessionId])
@@ -269,7 +269,7 @@ export default function EtherPage() {
     return ids
   }, [focusSessionId, sessions])
 
-  /** Сессии для эфира — отфильтрованные по дереву если scope=focus. */
+  /** Sessions for the ether — filtered down to the tree when scope=focus. */
   const visibleSessions = useMemo(() => {
     if (!treeSessionIds) return sessions
     return sessions.filter((s) => treeSessionIds.has(s.id))
@@ -302,18 +302,18 @@ export default function EtherPage() {
   const ether = useMemo(() => buildEtherFromSessions(visibleSessions, resolveMascot), [visibleSessions, resolveMascot])
   const { feed, edges, mascotMsgCounts, mascotActive } = ether
 
-  /** Маскоты которые ВИДНЫ на canvas — только те которые реально общаются,
-      т.е. участвуют хотя бы в одном edge ИЛИ являются root-оркестратором
-      текущего фокуса. Маскоты с изолированными сессиями (никого не звали
-      и их никто не звал) — НЕ показываем чтоб не захламлять. */
+  /** Mascots VISIBLE on the canvas — only those actually communicating,
+      i.e. participating in at least one edge OR being the root orchestrator
+      of the current focus. Mascots with isolated sessions (called no one
+      and were called by no one) are NOT shown, to avoid clutter. */
   const visibleMascots: Set<MascotId> = useMemo(() => {
     const set = new Set<MascotId>()
-    // 1) все участники edges (т.е. реально общающиеся пары)
+    // 1) all edge participants (i.e. pairs that actually communicate)
     for (const e of ether.edges) {
       set.add(e.a)
       set.add(e.b)
     }
-    // 2) корень фокус-сессии — всегда показываем, даже если он ещё не звал воркеров
+    // 2) the focus session's root — always shown, even if it hasn't called workers yet
     if (focusSessionId) {
       const focusSess = visibleSessions.find((s) => s.id === focusSessionId)
       if (focusSess) {
@@ -331,7 +331,7 @@ export default function EtherPage() {
     }
     return set
   }, [ether, focusSessionId, visibleSessions])
-  // Корень дерева фокуса = главный оркестратор.
+  // The root of the focus tree = the main orchestrator.
   const rootSessionId = useMemo(() => {
     if (!focusSessionId || focusSessionId === '__pending__') return null
     const byId = new Map(sessions.map((s) => [s.id, s]))
@@ -345,7 +345,7 @@ export default function EtherPage() {
     }
     return cur?.id || focusSessionId
   }, [sessions, focusSessionId])
-  // Live-поток мыслей/логики оркестратора (thinking + нарратив + вызовы tools).
+  // Live stream of the orchestrator's thoughts/logic (thinking + narration + tool calls).
   useEffect(() => {
     if (!rootSessionId) { setOrchThoughts([]); return }
     let cancelled = false
@@ -358,7 +358,7 @@ export default function EtherPage() {
           .map((l: any) => ({ kind: l.kind, meta: l.meta, text: String(l.text || '').trim().slice(0, 600) }))
           .filter((l: any) => l.text)
         setOrchThoughts(th)
-        // Детект НЕОТВЕЧЕННОГО [[ASK_USER]]-опроса (последний, после которого нет нового prompt'а)
+        // Detect an UNANSWERED [[ASK_USER]] survey (the latest one with no new prompt after it)
         const ls: any[] = res.lines || []
         const rTail: string[] = []
         for (let ri = ls.length - 1; ri >= 0; ri--) {
@@ -389,12 +389,12 @@ export default function EtherPage() {
     return () => { cancelled = true; clearInterval(id) }
   }, [rootSessionId])
   useEffect(() => { thoughtsRef.current?.scrollTo({ top: thoughtsRef.current.scrollHeight }) }, [orchThoughts])
-  // Финальный отчёт оркестратора = последний непрерывный блок его stdout-нарратива.
+  // The orchestrator's final report = the last contiguous block of its stdout narration.
   const finalReport = reportText
-  // Авто-открытие отчёта ОДИН раз — когда у оркестратора ЗАВЕРШИЛСЯ ход
-  // (его turns вырос с момента, как мы начали смотреть). lastUsedAt для этого
-  // не годится: он не обновляется ВО ВРЕМЯ длинного активного хода, из-за чего
-  // модал раньше выскакивал в начале на стартовой фразе оркестратора.
+  // Auto-open the report ONCE — when the orchestrator FINISHED a turn
+  // (its turns count grew since we started watching). lastUsedAt won't do here:
+  // it doesn't update DURING a long active turn, which made the modal pop up
+  // early, on the orchestrator's opening line.
   useEffect(() => {
     if (!rootSessionId) return
     const root = sessions.find((s) => s.id === rootSessionId)
@@ -419,7 +419,7 @@ export default function EtherPage() {
     else setSelectedEdge(null)
   }, [edges, selectedEdge])
 
-  // если пришли с ?focus=<sid> — подсветить маскота этой сессии
+  // if we arrived with ?focus=<sid> — highlight that session's mascot
   useEffect(() => {
     if (!focusSessionId || sessions.length === 0) return
     const s = sessions.find((x) => x.id === focusSessionId)
@@ -502,41 +502,41 @@ export default function EtherPage() {
       <header className="h-12 border-b border-[var(--zek-line)] flex items-center px-5 gap-6 flex-shrink-0">
         <Link href="/automations" className="text-[var(--zek-text-2)] hover:text-[var(--zek-text)] transition flex items-center gap-1.5 text-[13px]">
           <ArrowLeft className="w-3.5 h-3.5" />
-          к автоматам
+          to automations
         </Link>
         <span className="flex items-center gap-2.5">
-          <span className="w-[18px] h-[18px] rounded grid place-items-center font-mono text-[11px] font-bold" style={{ background: 'var(--zek-accent)', color: '#062014' }}>з</span>
+          <span className="w-[18px] h-[18px] rounded grid place-items-center font-mono text-[11px] font-bold" style={{ background: 'var(--zek-accent)', color: '#062014' }}>z</span>
           <span className="font-mono text-[13px] tracking-wider">
-            зек <span className="text-[var(--zek-text-3)]">/ эфир</span>
+            zek <span className="text-[var(--zek-text-3)]">/ ether</span>
           </span>
         </span>
         <span className="flex-1" />
-        <Link href="/automations/squad" className="font-mono text-[11px] text-[var(--zek-text-2)] hover:text-[var(--zek-text)] transition">отряд</Link>
-        <Link href="/automations/flow" className="font-mono text-[11px] text-[var(--zek-text-2)] hover:text-[var(--zek-text)] transition">поток</Link>
+        <Link href="/automations/squad" className="font-mono text-[11px] text-[var(--zek-text-2)] hover:text-[var(--zek-text)] transition">squad</Link>
+        <Link href="/automations/flow" className="font-mono text-[11px] text-[var(--zek-text-2)] hover:text-[var(--zek-text)] transition">flow</Link>
       </header>
 
       {/* page heading */}
       <div className="flex items-end justify-between px-8 py-5 gap-4 flex-wrap border-b border-[var(--zek-line)] flex-shrink-0">
         <div>
           <div className="font-mono text-[11px] uppercase tracking-[0.12em] text-[var(--zek-text-3)] mb-1">
-            эфир · граф диалогов · live · обновление 2с
+            ether · dialogue graph · live · refreshes every 2s
             {focusSessionId && focusSessionId !== '__pending__' && (
               <span className="text-[var(--zek-amber)] ml-2">
-                · фокус: {sessions.find((s) => s.id === focusSessionId)?.name?.slice(0, 50) || focusSessionId}…
+                · focus: {sessions.find((s) => s.id === focusSessionId)?.name?.slice(0, 50) || focusSessionId}…
               </span>
             )}
           </div>
           <h1 className="text-[22px] font-semibold tracking-tight m-0">
             {visibleMascots.size > 0 ? (
               <>
-                {visibleMascots.size} агент{visibleMascots.size === 1 ? '' : visibleMascots.size < 5 ? 'а' : 'ов'}
+                {visibleMascots.size} agent{visibleMascots.size === 1 ? '' : 's'}
                 {' · '}
-                {edges.length} канал{edges.length === 1 ? '' : edges.length < 5 ? 'а' : 'ов'}
+                {edges.length} channel{edges.length === 1 ? '' : 's'}
                 {' · '}
-                {feed.length} реплик
+                {feed.length} messages
               </>
             ) : (
-              'жду спавна агентов…'
+              'waiting for agents to spawn…'
             )}
           </h1>
         </div>
@@ -563,7 +563,7 @@ export default function EtherPage() {
           {rootSessionId && orchThoughts.length > 0 && (
             <div className="absolute left-3 top-3 bottom-3 w-[330px] z-10 rounded-lg border border-[var(--zek-line)] bg-[var(--zek-bg-1)]/85 backdrop-blur flex flex-col overflow-hidden">
               <div className="px-3 py-2 border-b border-[var(--zek-line)] text-[10.5px] uppercase tracking-wider text-[var(--zek-amber)] font-mono flex items-center gap-1.5">
-                <span>🧠 мысли оркестратора</span>
+                <span>🧠 orchestrator's thoughts</span>
                 <span className="ml-auto text-[var(--zek-text-3)] normal-case tracking-normal">{orchThoughts.length}</span>
               </div>
               <div ref={thoughtsRef} className="flex-1 overflow-y-auto px-3 py-2 space-y-1.5 text-[11.5px] leading-snug">
@@ -632,8 +632,8 @@ export default function EtherPage() {
           </svg>
 
           {ROSTER_IDENTITY.map((ident) => {
-            // В focus-режиме рендерим только те маскоты у которых есть
-            // сессии в visibleSessions. В all-режиме — все 10.
+            // In focus mode render only the mascots that have sessions in
+            // visibleSessions. In all mode — all 10 of them.
             if (!visibleMascots.has(ident.id)) return null
             const isActive = mascotActive.has(ident.id)
             const isFocused = focusAgent === ident.id || (selectedEdgeData && (selectedEdgeData.a === ident.id || selectedEdgeData.b === ident.id))
@@ -662,8 +662,8 @@ export default function EtherPage() {
                 </div>
                 <div className="font-mono text-[11px] text-[var(--zek-text-3)] uppercase tracking-wider">
                   {focusSessionId && focusSessionId !== '__pending__'
-                    ? 'жду спавна агентов от оркестратора…'
-                    : 'нет активных каналов · запусти оркестратора'}
+                    ? 'waiting for the orchestrator to spawn agents…'
+                    : 'no active channels · start an orchestrator'}
                 </div>
               </div>
             </div>
@@ -671,7 +671,7 @@ export default function EtherPage() {
           {visibleMascots.size > 0 && edges.length === 0 && (
             <div className="absolute bottom-6 left-1/2 -translate-x-1/2 pointer-events-none">
               <div className="font-mono text-[10.5px] text-[var(--zek-text-3)] uppercase tracking-wider bg-[var(--zek-bg-1)] border border-[var(--zek-line)] rounded-full px-3 py-1">
-                ⌛ оркестратор работает · скоро позовёт воркеров…
+                ⌛ orchestrator is working · it will call workers soon…
               </div>
             </div>
           )}
@@ -691,13 +691,13 @@ export default function EtherPage() {
                 <span>{ROSTER_IDENTITY.find((m) => m.id === selectedEdgeData.b)?.name}</span>
               </div>
               <div className="flex items-center gap-1.5 font-mono text-[10.5px] text-[var(--zek-text-3)]">
-                <span>{selectedEdgeData.messages.length} реплик</span>
+                <span>{selectedEdgeData.messages.length} messages</span>
                 <span>·</span>
                 <span>{selectedEdgeData.messages[0]?.t} → {selectedEdgeData.messages[selectedEdgeData.messages.length - 1]?.t}</span>
                 <button
                   onClick={() => setSelectedEdge(null)}
                   className="ml-auto w-6 h-6 rounded grid place-items-center text-[var(--zek-text-3)] hover:text-[var(--zek-text)] hover:bg-white/[0.05] transition"
-                  title="закрыть"
+                  title="close"
                 >
                   <X className="w-3 h-3" />
                 </button>
@@ -708,8 +708,8 @@ export default function EtherPage() {
               {selectedEdgeData.messages.map((m, i) => {
                 const isLeft = m.from === selectedEdgeData.a
                 const meta = m.type === 'delegate'
-                  ? { sym: '→', color: 'var(--zek-purple)', label: 'просит' }
-                  : { sym: '←', color: 'var(--zek-accent)', label: 'отвечает' }
+                  ? { sym: '→', color: 'var(--zek-purple)', label: 'asks' }
+                  : { sym: '←', color: 'var(--zek-accent)', label: 'replies' }
                 const fromIdent = ROSTER_IDENTITY.find((x) => x.id === m.from)
                 return (
                   <div key={i} className={`zek-bubble-row ${isLeft ? 'left' : 'right'}`}>
@@ -731,7 +731,7 @@ export default function EtherPage() {
                           href={`/automations?session=${m.sessionId}`}
                           className="text-[10px] font-mono text-[var(--zek-accent)] hover:text-[var(--zek-text)] transition self-end"
                         >
-                          ↪ открыть сессию
+                          ↪ open session
                         </Link>
                       )}
                     </div>
@@ -749,7 +749,7 @@ export default function EtherPage() {
           onClick={() => setReportOpen(true)}
           className="fixed top-2.5 left-1/2 -translate-x-1/2 z-30 px-4 py-1.5 rounded-full border border-[var(--zek-amber)] bg-[var(--zek-amber)] text-[#1a1325] text-[12px] font-mono font-semibold shadow-lg hover:brightness-110 transition"
         >
-          ☰ Финальный отчёт
+          ☰ Final report
         </button>
       )}
       {reportOpen && finalReport && (
@@ -757,7 +757,7 @@ export default function EtherPage() {
           <div className="w-full max-w-3xl max-h-[85vh] rounded-xl border border-[var(--zek-line-2)] bg-[var(--zek-bg-1)] flex flex-col overflow-hidden shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <div className="px-5 py-3 border-b border-[var(--zek-line)] flex items-center gap-2">
               <span className="text-[15px]">📋</span>
-              <div className="text-[13px] font-semibold text-[var(--zek-text)]">Финальный отчёт оркестратора</div>
+              <div className="text-[13px] font-semibold text-[var(--zek-text)]">Orchestrator's final report</div>
               <button onClick={() => setReportOpen(false)} className="ml-auto text-[var(--zek-text-3)] hover:text-[var(--zek-text)]"><X className="w-4 h-4" /></button>
             </div>
             <div className="flex-1 overflow-y-auto px-5 py-4 text-[13px] leading-relaxed">
@@ -768,7 +768,7 @@ export default function EtherPage() {
       )}
       {pendingAsk && (
         <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-30 w-[min(560px,92vw)] max-h-[70vh] overflow-y-auto rounded-xl border border-violet-400/30 bg-[var(--zek-bg-1)] shadow-2xl">
-          <div className="px-3 py-1.5 text-[10.5px] uppercase tracking-wider text-violet-300/80 border-b border-violet-400/20">агент спрашивает — ответь прямо тут</div>
+          <div className="px-3 py-1.5 text-[10.5px] uppercase tracking-wider text-violet-300/80 border-b border-violet-400/20">the agent is asking — answer right here</div>
           <AskUserBlock payload={pendingAsk.payload} onSubmit={(text) => submitAsk(text)} />
         </div>
       )}

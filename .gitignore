@@ -1,9 +1,9 @@
 # =========================================================
-#  agent-stack — общий .gitignore
-#  ВАЖНО: все секреты и ключи держим ТУТ, в репу не попадают
+#  agent-stack — shared .gitignore
+#  IMPORTANT: all secrets and keys stay HERE, they never land in the repo
 # =========================================================
 
-# ---- секреты, ключи, токены ----
+# ---- secrets, keys, tokens ----
 .env
 .env.*
 !.env.example
@@ -29,7 +29,7 @@ credentials.json
 service-account*.json
 gcp-key*.json
 
-# ---- персональные данные / чаты / сессии агента ----
+# ---- personal data / chats / agent sessions ----
 agent-sessions.json
 agent-sessions.json.*
 chat-store/
@@ -38,7 +38,7 @@ automations-runs.jsonl
 automations-schedules.json
 telegram-state.json
 
-# ---- бэкапы / временные ----
+# ---- backups / temporary files ----
 *.bak
 *.bak.*
 *~
@@ -60,7 +60,7 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
-# ---- системное ----
+# ---- system files ----
 .DS_Store
 Thumbs.db
 
@@ -69,11 +69,11 @@ Thumbs.db
 .vscode/
 *.iml
 
-# ---- Claude / агентский кэш (на всякий случай) ----
+# ---- Claude / agent cache (just in case) ----
 .claude/projects/
 .claude/sessions/
 ~/.claude/
 
-# ---- логи ----
+# ---- logs ----
 *.log
 logs/

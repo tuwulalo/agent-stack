@@ -16,7 +16,7 @@ const mono = JetBrains_Mono({
 
 export const metadata: Metadata = {
   title: 'Hermes × Kimi — Workflow Hub',
-  description: 'Чат с Kimi и панель управления Hermes Agent',
+  description: 'Chat with Kimi and the Hermes Agent control panel',
 }
 
 export const viewport: Viewport = {
@@ -27,7 +27,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="ru" className={`${inter.variable} ${mono.variable}`}>
+    <html lang="en" className={`${inter.variable} ${mono.variable}`}>
       <body style={{ fontFamily: 'var(--font-inter), system-ui, sans-serif' }}>
         {children}
       </body>

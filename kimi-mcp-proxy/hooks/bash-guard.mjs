@@ -26,8 +26,8 @@ const DANGER = [
 for (const re of DANGER) {
   if (re.test(cmd)) {
     process.stderr.write(
-      'BLOCKED by bash-guard: команда выглядит деструктивной/системной и заблокирована политикой безопасности платформы. '
-      + 'Если действие легитимно — попроси оператора выполнить его вручную.\n'
+      'BLOCKED by bash-guard: the command looks destructive/system-level and is blocked by the platform security policy. '
+      + 'If the action is legitimate — ask the operator to run it manually.\n'
     )
     process.exit(2) // exit 2 = PreToolUse deny; stderr is fed back to the model
   }

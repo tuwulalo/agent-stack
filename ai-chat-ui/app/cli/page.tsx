@@ -29,7 +29,7 @@ export default function CliApprovePage() {
         return
       }
       setStatus('ok')
-      setMsg('Готово. Возвращайся в CLI — токен уже прилетел.')
+      setMsg('Done. Go back to your terminal — the token is already there.')
     } catch (e) {
       setStatus('err')
       setMsg((e as Error).message)
@@ -61,10 +61,10 @@ export default function CliApprovePage() {
         }}
       >
         <div style={{ color: '#fff', fontSize: 18, fontWeight: 600, marginBottom: 4 }}>
-          Авторизация CLI
+          Device sign-in
         </div>
         <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13, marginBottom: 22 }}>
-          Введи короткий код, который показал тебе{' '}
+          Enter the short code shown to you by{' '}
           <code style={{ background: 'rgba(255,255,255,0.06)', padding: '1px 6px', borderRadius: 4 }}>
             agent-stack login
           </code>
@@ -80,7 +80,7 @@ export default function CliApprovePage() {
             marginBottom: 6,
           }}
         >
-          Код устройства
+          Device code
         </label>
         <input
           autoFocus
@@ -138,7 +138,7 @@ export default function CliApprovePage() {
             cursor: status === 'sending' || code.length < 8 ? 'not-allowed' : 'pointer',
           }}
         >
-          {status === 'sending' ? 'Подтверждаю…' : 'Подтвердить'}
+          {status === 'sending' ? 'Confirming…' : 'Confirm'}
         </button>
       </form>
     </div>

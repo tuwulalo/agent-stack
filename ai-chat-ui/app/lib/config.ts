@@ -24,17 +24,17 @@ export function agentFileUrl(absPath: string): string {
 }
 
 export const MODELS = [
-  { id: 'claude-5',            label: 'Claude 5',            hint: 'Флагман Anthropic нового поколения' },
-  { id: 'fable-5',             label: 'Fable 5',             hint: 'Новая флагманская модель' },
-  { id: 'kimi-for-coding',     label: 'Kimi for Coding',     hint: 'Стандарт для кода и инструментов' },
-  { id: 'kimi-k2-0711-preview', label: 'Kimi K2 (preview)',  hint: 'Универсальная флагманская' },
-  { id: 'moonshot-v1-128k',    label: 'Moonshot v1 128k',    hint: 'Длинный контекст' },
+  { id: 'claude-5',            label: 'Claude 5',            hint: 'Anthropic\'s next-generation flagship' },
+  { id: 'fable-5',             label: 'Fable 5',             hint: 'New flagship model' },
+  { id: 'kimi-for-coding',     label: 'Kimi for Coding',     hint: 'The standard for code and tools' },
+  { id: 'kimi-k2-0711-preview', label: 'Kimi K2 (preview)',  hint: 'General-purpose flagship' },
+  { id: 'moonshot-v1-128k',    label: 'Moonshot v1 128k',    hint: 'Long context' },
 ]
 
-// Явно закреплён, чтобы добавление новых моделей в начало списка
-// не меняло рабочий дефолт.
+// Pinned explicitly so that adding new models to the top of the list
+// doesn't change the working default.
 export const DEFAULT_MODEL = 'kimi-for-coding'
 
-export const DEFAULT_SYSTEM_PROMPT = `Ты — AI-ассистент в воркфлоу Hermes × Kimi.
-Отвечай по делу, без воды. Код оборачивай в \`\`\`блоки\`\`\` с указанием языка.
-Если запрос требует выполнения инструментов на машине — предложи команду для Hermes.`
+export const DEFAULT_SYSTEM_PROMPT = `You are an AI assistant in the Hermes × Kimi workflow.
+Answer to the point, no fluff. Wrap code in \`\`\`blocks\`\`\` with the language specified.
+If the request requires running tools on the machine, suggest a command for Hermes.`

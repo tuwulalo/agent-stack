@@ -82,7 +82,7 @@ export async function readFileAsText(file: File): Promise<string> {
   const head = text.slice(0, MAX_TEXT_BYTES * 0.7)
   const tail = text.slice(-MAX_TEXT_BYTES * 0.25)
   const cut = text.length - head.length - tail.length
-  return `${head}\n\n/* … обрезано ${cut.toLocaleString('ru')} символов … */\n\n${tail}`
+  return `${head}\n\n/* … ${cut.toLocaleString('en-US')} characters truncated … */\n\n${tail}`
 }
 
 /** Read any File as a data: URL — used to embed image thumbnails in user message bubbles. */
@@ -153,7 +153,7 @@ export function buildChatPrefix(attachments: AttachedFile[]): string {
   if (textOnly.length === 0) return ''
   const parts = textOnly.map(
     (a) =>
-      `Файл **${a.name}** (${formatBytes(a.size)}):\n\n\`\`\`${langFromName(a.name)}\n${a.text}\n\`\`\``,
+      `File **${a.name}** (${formatBytes(a.size)}):\n\n\`\`\`${langFromName(a.name)}\n${a.text}\n\`\`\``,
   )
   return parts.join('\n\n') + '\n\n---\n\n'
 }
@@ -189,7 +189,7 @@ export async function describeImages(
             {
               type: 'text',
               text:
-                'Опиши кратко, но конкретно, что на этом изображении: какие объекты, текст (если есть — выпиши дословно), цвета, композиция. Это описание увидит другой ИИ-агент, у которого нет vision, чтобы он мог принять решение по задаче. Уложись в 4-6 предложений.',
+                'Describe briefly but concretely what is in this image: which objects, any text (if present, quote it verbatim), colors, composition. This description will be read by another AI agent that has no vision, so it can make a decision about the task. Keep it to 4-6 sentences.',
             },
             { type: 'image_url', image_url: { url: dataUrls[i] } },
           ],
@@ -204,17 +204,17 @@ export async function describeImages(
         body: JSON.stringify(body),
       })
       if (!res.ok) {
-        out.push(`(не удалось получить описание: HTTP ${res.status})`)
+        out.push(`(failed to get a description: HTTP ${res.status})`)
         continue
       }
       const j = (await res.json()) as {
         choices?: Array<{ message?: { content?: string } }>
       }
-      const text = j.choices?.[0]?.message?.content?.trim() || '(пустое описание)'
+      const text = j.choices?.[0]?.message?.content?.trim() || '(empty description)'
       out.push(text)
     } catch (e: any) {
       if (e?.name === 'AbortError') throw e
-      out.push(`(ошибка vision pre-pass: ${e?.message || e})`)
+      out.push(`(vision pre-pass error: ${e?.message || e})`)
     }
   }
   return out
@@ -263,17 +263,17 @@ export function buildAgentPrefix(
     if (imageDescriptions[i]) descByName.set(a.name, imageDescriptions[i])
   })
 
-  const lines: string[] = ['Прикреплены файлы:']
+  const lines: string[] = ['Attached files:']
   for (const a of attachments) {
     if (a.text !== undefined) {
-      lines.push(`- **${a.name}** (${formatBytes(a.size)}) — текстовое содержимое ниже.`)
+      lines.push(`- **${a.name}** (${formatBytes(a.size)}) — text content below.`)
     } else {
       const u = uploaded?.files.find((f) => f.name === a.name)
       const isImage = a.mime.startsWith('image/')
       const desc = descByName.get(a.name)
-      const head = `- **${a.name}** (${formatBytes(a.size)}, ${a.mime}) — лежит по пути: \`${u?.path ?? '?'}\``
+      const head = `- **${a.name}** (${formatBytes(a.size)}, ${a.mime}) — stored at: \`${u?.path ?? '?'}\``
       if (isImage && desc) {
-        lines.push(`${head}\n  Что на изображении (по результату Kimi vision):\n  > ${desc.replace(/\n/g, '\n  > ')}`)
+        lines.push(`${head}\n  What the image shows (per Kimi vision):\n  > ${desc.replace(/\n/g, '\n  > ')}`)
       } else {
         lines.push(head)
       }

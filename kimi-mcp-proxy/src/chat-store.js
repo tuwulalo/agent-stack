@@ -16,9 +16,9 @@ const SAFE_ID = /^[a-zA-Z0-9_\-]{3,64}$/;
 const SAFE_FILENAME = /^[a-zA-Z0-9_\-]{1,80}\.md$/;
 export const SYSTEM_FILES = ['facts.md', 'decisions.md', 'summary.md'];
 const SYSTEM_TITLES = {
-  'facts.md':     'Факты по чату',
-  'decisions.md': 'Принятые решения',
-  'summary.md':   'Краткое содержание',
+  'facts.md':     'Chat facts',
+  'decisions.md': 'Decisions made',
+  'summary.md':   'Summary',
 };
 
 const NOTE_BODY_MAX = 200_000;     // 200 KB per file
@@ -134,37 +134,37 @@ export function buildMemoryBlock(chatId) {
 
   return [
     '<CHAT_MEMORY>',
-    'Это твоя долговременная память по этому конкретному чату. Используй её,',
-    'чтобы не задавать тех же вопросов и оставаться в контексте ранее принятых',
-    'решений. Не цитируй блок дословно — просто учитывай содержимое.',
+    'This is your long-term memory for this specific chat. Use it to avoid',
+    'asking the same questions again and to stay in the context of decisions',
+    'made earlier. Do not quote the block verbatim — just take its contents into account.',
     '',
     ...parts,
     '</CHAT_MEMORY>',
   ].join('\n');
 }
 
-const DIGEST_SYSTEM = `Ты — внутренний модуль, поддерживающий долговременную память чата.
-На вход даны:
-  - текущее содержимое трёх MD-файлов (facts.md / decisions.md / summary.md),
-  - последняя пара (пользователь → ассистент).
+const DIGEST_SYSTEM = `You are an internal module maintaining the chat's long-term memory.
+You are given:
+  - the current contents of three MD files (facts.md / decisions.md / summary.md),
+  - the latest exchange pair (user → assistant).
 
-Верни СТРОГО JSON-объект следующего вида и больше ничего:
+Return STRICTLY a JSON object of the following shape and nothing else:
 
 {
-  "facts_md":     "<новое полное содержимое facts.md>",
-  "decisions_md": "<новое полное содержимое decisions.md>",
-  "summary_md":   "<новое полное содержимое summary.md>"
+  "facts_md":     "<new full contents of facts.md>",
+  "decisions_md": "<new full contents of decisions.md>",
+  "summary_md":   "<new full contents of summary.md>"
 }
 
-Правила:
-- Каждый файл — markdown со списком «- …» (буллеты, одна строка на пункт).
-- facts.md: устойчивые факты о пользователе / проекте / окружении / именах / стэке.
-- decisions.md: конкретные решения, выводы, договорённости, принятые архитектурные выборы.
-- summary.md: ≤ 250 слов, краткий обзор о чём этот чат и куда он движется.
-- НЕ выдумывай. Добавляй только то, что прямо следует из обмена.
-- Дублирующие пункты не плоди — обновляй существующие, удаляй устаревшие.
-- Если по теме нет ничего нового — верни прежнее содержимое без изменений.
-- Не пиши ничего вне JSON, никаких \`\`\`json…\`\`\` обёрток, никаких комментариев.`;
+Rules:
+- Each file is markdown with a "- …" list (bullets, one line per item).
+- facts.md: stable facts about the user / project / environment / names / stack.
+- decisions.md: concrete decisions, conclusions, agreements, accepted architectural choices.
+- summary.md: ≤ 250 words, a brief overview of what this chat is about and where it is heading.
+- Do NOT invent anything. Add only what directly follows from the exchange.
+- Do not duplicate items — update existing ones, remove outdated ones.
+- If there is nothing new on a topic — return the previous contents unchanged.
+- Write nothing outside the JSON, no \`\`\`json…\`\`\` wrappers, no comments.`;
 
 /** Strip ```json…``` fences if model wrapped the JSON despite instructions. */
 function stripCodeFence(s) {
@@ -188,14 +188,14 @@ export async function digestChat(chatId, userMessage, assistantMessage) {
   const summary   = readNote(chatId, 'summary.md')   || '';
 
   const userContent =
-    `# Текущее состояние памяти\n\n` +
-    `## facts.md\n${facts || '(пусто)'}\n\n` +
-    `## decisions.md\n${decisions || '(пусто)'}\n\n` +
-    `## summary.md\n${summary || '(пусто)'}\n\n` +
-    `# Последний обмен\n\n` +
-    `## Пользователь:\n${String(userMessage).slice(0, PROMPT_TRUNC_USER)}\n\n` +
-    `## Ассистент:\n${String(assistantMessage).slice(0, PROMPT_TRUNC_ASSISTANT)}\n\n` +
-    `Верни JSON по схеме из system-промпта.`;
+    `# Current memory state\n\n` +
+    `## facts.md\n${facts || '(empty)'}\n\n` +
+    `## decisions.md\n${decisions || '(empty)'}\n\n` +
+    `## summary.md\n${summary || '(empty)'}\n\n` +
+    `# Latest exchange\n\n` +
+    `## User:\n${String(userMessage).slice(0, PROMPT_TRUNC_USER)}\n\n` +
+    `## Assistant:\n${String(assistantMessage).slice(0, PROMPT_TRUNC_ASSISTANT)}\n\n` +
+    `Return JSON following the schema from the system prompt.`;
 
   try {
     const resp = await callKimiChatCompletion({

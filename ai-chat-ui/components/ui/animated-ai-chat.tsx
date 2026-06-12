@@ -167,26 +167,26 @@ function fmtSize(bytes: number): string {
 const COMMAND_SUGGESTIONS: CommandSuggestion[] = [
   {
     icon: <ImageIcon className="w-4 h-4" />,
-    label: 'Объясни код',
-    description: 'Разбор сниппета построчно',
+    label: 'Explain code',
+    description: 'Line-by-line snippet walkthrough',
     prefix: '/explain',
   },
   {
     icon: <Figma className="w-4 h-4" />,
     label: 'Endpoint',
-    description: 'Express + zod валидация',
+    description: 'Express + zod validation',
     prefix: '/endpoint',
   },
   {
     icon: <MonitorIcon className="w-4 h-4" />,
     label: 'SQL',
-    description: 'Оптимизировать запрос',
+    description: 'Optimize a query',
     prefix: '/sql',
   },
   {
     icon: <Sparkles className="w-4 h-4" />,
     label: 'Hermes',
-    description: 'Команда для агента',
+    description: 'Command for the agent',
     prefix: '/hermes',
   },
 ]
@@ -426,7 +426,7 @@ export function AnimatedAIChat({
                 className="inline-block"
               >
                 <h1 className="text-3xl md:text-4xl font-medium tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white/95 to-white/40 pb-1">
-                  {isAgent ? 'Что выполнить на VPS?' : isChat ? 'Чем помочь сегодня?' : 'Спроси что угодно'}
+                  {isAgent ? 'What should run on the VPS?' : isChat ? 'How can I help today?' : 'Ask anything'}
                 </h1>
                 <motion.div
                   className="h-px bg-gradient-to-r from-transparent via-white/20 to-transparent"
@@ -442,8 +442,8 @@ export function AnimatedAIChat({
                 transition={{ delay: 0.25 }}
               >
                 {isAgent
-                  ? 'Hermes выполнит задачу автономно — шеллы, файлы, всё сам'
-                  : 'Напиши вопрос или начни команду со слэша'}
+                  ? 'Hermes will handle the task on its own — shells, files, everything'
+                  : 'Type a question or start a command with a slash'}
               </motion.p>
             </div>
           )}
@@ -480,10 +480,10 @@ export function AnimatedAIChat({
                   <div className="flex flex-col items-center gap-2 text-center">
                     <Paperclip className="w-7 h-7 text-violet-200" />
                     <div className="text-[13px] font-medium text-white">
-                      Отпусти, чтобы прикрепить
+                      Drop to attach
                     </div>
                     <div className="text-[11px] text-white/65">
-                      файлы добавятся к следующему сообщению
+                      files will be added to your next message
                     </div>
                   </div>
                 </motion.div>
@@ -540,8 +540,8 @@ export function AnimatedAIChat({
                 onBlur={() => setInputFocused(false)}
                 placeholder={
                   isAgent
-                    ? 'Например: «открой google.com и сохрани скриншот в /tmp/g.png»'
-                    : 'Вставь текст или картинку (Ctrl+V) · спроси Kimi…'
+                    ? 'For example: "open google.com and save a screenshot to /tmp/g.png"'
+                    : 'Paste text or an image (Ctrl+V) · ask Kimi…'
                 }
                 containerClassName="w-full"
                 className={cn(
@@ -588,7 +588,7 @@ export function AnimatedAIChat({
                       <button
                         onClick={() => removeAttach(a.id)}
                         className="ml-0.5 w-5 h-5 grid place-items-center rounded text-white/45 hover:text-white hover:bg-white/[0.08] transition-colors flex-shrink-0"
-                        aria-label={`Убрать ${a.name}`}
+                        aria-label={`Remove ${a.name}`}
                       >
                         <XIcon className="w-3 h-3" />
                       </button>
@@ -614,8 +614,8 @@ export function AnimatedAIChat({
                   onClick={openPicker}
                   whileTap={{ scale: 0.94 }}
                   className="w-8 h-8 grid place-items-center rounded-md text-white/45 hover:text-white/90 hover:bg-white/[0.06] transition-colors"
-                  aria-label="Вложить файл"
-                  title="Вложить файл"
+                  aria-label="Attach a file"
+                  title="Attach a file"
                 >
                   <Paperclip className="w-4 h-4" />
                 </motion.button>
@@ -633,7 +633,7 @@ export function AnimatedAIChat({
                       ? 'bg-white/[0.10] text-white/95'
                       : 'text-white/45 hover:text-white/90 hover:bg-white/[0.06]',
                   )}
-                  aria-label="Открыть палитру команд"
+                  aria-label="Open the command palette"
                 >
                   <Command className="w-4 h-4" />
                 </motion.button>
@@ -641,7 +641,7 @@ export function AnimatedAIChat({
                 {onModeChange && (
                   <div
                     role="tablist"
-                    aria-label="Режим"
+                    aria-label="Mode"
                     className="flex items-center gap-0.5 h-8 p-0.5 rounded-md bg-white/[0.04] border border-white/10"
                   >
                     <button
@@ -655,7 +655,7 @@ export function AnimatedAIChat({
                           ? 'bg-gradient-to-r from-amber-400/25 to-violet-400/25 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.18)]'
                           : 'text-white/55 hover:text-white/85',
                       )}
-                      title="Kimi сам решает звать Hermes или нет"
+                      title="Kimi decides on its own whether to call Hermes"
                     >
                       <Sparkles className="w-3 h-3" />
                       Auto
@@ -671,7 +671,7 @@ export function AnimatedAIChat({
                           ? 'bg-white/[0.10] text-white/95'
                           : 'text-white/55 hover:text-white/85',
                       )}
-                      title="Только Kimi, без Hermes — для Q&A и кода"
+                      title="Kimi only, no Hermes — for Q&A and code"
                     >
                       <MessageSquare className="w-3 h-3" />
                       Chat
@@ -687,7 +687,7 @@ export function AnimatedAIChat({
                           ? 'bg-gradient-to-r from-violet-500/35 to-fuchsia-500/35 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.18)]'
                           : 'text-white/55 hover:text-white/85',
                       )}
-                      title="Принудительно через Hermes — для shell/файлов/сабагентов"
+                      title="Always go through Hermes — for shell, files, and sub-agents"
                     >
                       <Zap className="w-3 h-3" />
                       Agent
@@ -725,7 +725,7 @@ export function AnimatedAIChat({
                       exit={{ opacity: 0, x: 8 }}
                       className="hidden sm:flex items-center gap-2 h-8 px-2.5 rounded-md bg-white/[0.04] border border-white/10 text-[11px] text-white/65"
                     >
-                      <span>{isAgent ? 'Hermes выполняет' : 'Думает'}</span>
+                      <span>{isAgent ? 'Hermes is working' : 'Thinking'}</span>
                       <TypingDots />
                     </motion.div>
                   )}
@@ -740,7 +740,7 @@ export function AnimatedAIChat({
                     className="h-8 px-3 rounded-md text-[12px] font-medium flex items-center gap-1.5 bg-white/[0.08] hover:bg-white/[0.12] text-white border border-white/15 transition-colors"
                   >
                     <StopCircle className="w-3.5 h-3.5" />
-                    <span>Остановить</span>
+                    <span>Stop</span>
                   </motion.button>
                 ) : (
                   <motion.button
@@ -758,7 +758,7 @@ export function AnimatedAIChat({
                     )}
                   >
                     <ArrowUpIcon className="w-3.5 h-3.5" />
-                    <span>Отправить</span>
+                    <span>Send</span>
                   </motion.button>
                 )}
               </div>
@@ -793,7 +793,7 @@ export function AnimatedAIChat({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 12 }}
           >
-            Выбрано: <span className="text-white">{recentCommand}</span>
+            Selected: <span className="text-white">{recentCommand}</span>
           </motion.div>
         )}
       </AnimatePresence>
@@ -818,7 +818,7 @@ export function AnimatedAIChat({
                 {isAgent ? <HermesMascot size={22} /> : <KimiMascot size={22} />}
               </div>
               <div className="flex items-center gap-2 text-sm text-white/75">
-                <span>{isAgent ? 'Hermes выполняет' : 'Kimi думает'}</span>
+                <span>{isAgent ? 'Hermes is working' : 'Kimi is thinking'}</span>
                 <TypingDots />
               </div>
             </div>

@@ -21,18 +21,18 @@ export default function SharePage({ params }: { params: { id: string } }) {
   return (
     <div className="min-h-screen bg-[#08080c] text-white">
       <header className="border-b border-white/[0.06] bg-black/30 px-5 py-3 flex items-center gap-3">
-        <span className="text-[13px] font-semibold text-violet-200">Эфир · публичный реплей</span>
+        <span className="text-[13px] font-semibold text-violet-200">On air · public replay</span>
         {data?.session?.name && <span className="text-[12px] text-white/55 truncate">{data.session.name}</span>}
         <span className="flex-1" />
         {typeof data?.session?.costUsd === 'number' && data.session.costUsd > 0 && (
           <span className="text-[11px] font-mono text-emerald-300/75">${data.session.costUsd.toFixed(data.session.costUsd < 1 ? 3 : 2)}</span>
         )}
-        {data?.running && <span className="text-[11px] text-amber-300 animate-pulse">● в работе</span>}
+        {data?.running && <span className="text-[11px] text-amber-300 animate-pulse">● running</span>}
       </header>
 
       <main className="max-w-3xl mx-auto px-4 py-6 font-mono text-[12.5px] leading-relaxed">
-        {err && <div className="text-red-300">Сессия недоступна: {err}</div>}
-        {!err && !data && <div className="text-white/40">Загрузка…</div>}
+        {err && <div className="text-red-300">Session unavailable: {err}</div>}
+        {!err && !data && <div className="text-white/40">Loading…</div>}
         {data?.lines?.map((l, i) => {
           if (l.kind === 'prompt') {
             return <div key={i} className="my-2 px-3 py-2 rounded bg-violet-500/10 border border-violet-400/20 whitespace-pre-wrap break-words">{l.text}</div>

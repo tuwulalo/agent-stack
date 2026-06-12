@@ -192,10 +192,10 @@ export function AgentGraph({ onPickSession, activeSessionId, refreshKey = 0, foc
     return (
       <div className="px-4 py-20 text-center">
         <Network className="w-14 h-14 text-white/15 mx-auto mb-4" />
-        <div className="text-[14px] text-white/65 mb-1">Граф пуст</div>
+        <div className="text-[14px] text-white/65 mb-1">The graph is empty</div>
         <div className="text-[12px] text-white/40 max-w-[360px] mx-auto leading-relaxed">
-          Когда запустишь задачу с делегированием саб-агентам — здесь нарисуется живое дерево.
-          Под-агенты подвешиваются под родителем, бегущие частицы показывают активное общение.
+          Run a task that delegates to sub-agents and a live tree will appear here.
+          Sub-agents hang below their parent, and moving particles show active communication.
         </div>
       </div>
     )
@@ -216,12 +216,12 @@ export function AgentGraph({ onPickSession, activeSessionId, refreshKey = 0, foc
     <div className="relative">
       {/* Legend */}
       <div className="sticky top-0 z-10 px-4 py-2 bg-[#08080c]/85 backdrop-blur-md border-b border-white/[0.06] flex items-center gap-4 text-[11px]">
-        <span className="flex items-center gap-1.5 text-white/55"><Network className="w-3.5 h-3.5 text-violet-300" /> Граф агентов · {sessions.length}</span>
+        <span className="flex items-center gap-1.5 text-white/55"><Network className="w-3.5 h-3.5 text-violet-300" /> Agent graph · {sessions.length}</span>
         <span className="flex-1" />
         {(['running','done','idle','failed'] as const).map(st => (
           <span key={st} className="flex items-center gap-1.5 text-white/55">
             <span className="w-2.5 h-2.5 rounded-full" style={{ background: STATUS_FILL[st], boxShadow: `0 0 8px ${STATUS_GLOW[st]}` }} />
-            {st === 'running' ? 'идёт' : st === 'done' ? 'готов' : st === 'idle' ? 'ждёт' : 'сбой'}
+            {st === 'running' ? 'running' : st === 'done' ? 'done' : st === 'idle' ? 'idle' : 'failed'}
           </span>
         ))}
         <button
@@ -230,7 +230,7 @@ export function AgentGraph({ onPickSession, activeSessionId, refreshKey = 0, foc
             setLoading(true)
             listAgentSessions(200).then(setAllSessions).finally(() => setLoading(false))
           }}
-          title="Обновить"
+          title="Refresh"
         >
           <RefreshCw className={'w-3.5 h-3.5 ' + (loading ? 'animate-spin' : '')} />
         </button>
@@ -418,8 +418,8 @@ function CpuSvg({ color }: { color: string }) {
 }
 
 function relAge(ms: number): string {
-  if (ms < 60_000) return Math.max(1, Math.floor(ms / 1000)) + 'с'
-  if (ms < 60 * 60_000) return Math.floor(ms / 60_000) + 'м'
-  if (ms < 24 * 60 * 60_000) return Math.floor(ms / 3_600_000) + 'ч'
-  return Math.floor(ms / 86_400_000) + 'д'
+  if (ms < 60_000) return Math.max(1, Math.floor(ms / 1000)) + 's'
+  if (ms < 60 * 60_000) return Math.floor(ms / 60_000) + 'm'
+  if (ms < 24 * 60 * 60_000) return Math.floor(ms / 3_600_000) + 'h'
+  return Math.floor(ms / 86_400_000) + 'd'
 }

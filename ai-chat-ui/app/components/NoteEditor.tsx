@@ -66,7 +66,7 @@ export function NoteEditor({ chatId, name, isSystem = false, onClose, onChanged 
 
   const remove = async () => {
     if (isSystem) return
-    if (!confirm(`Удалить «${name}»? Это действие нельзя отменить.`)) return
+    if (!confirm(`Delete "${name}"? This cannot be undone.`)) return
     setSaving(true)
     try {
       const ok = await deleteNote(chatId, name)
@@ -116,7 +116,7 @@ export function NoteEditor({ chatId, name, isSystem = false, onClose, onChanged 
                   (tab === 'edit' ? 'bg-white/[0.08] text-white' : 'text-white/55 hover:text-white/85')
                 }
               >
-                Редактор
+                Editor
               </button>
               <button
                 onClick={() => setTab('preview')}
@@ -126,13 +126,13 @@ export function NoteEditor({ chatId, name, isSystem = false, onClose, onChanged 
                 }
               >
                 <Eye className="w-3 h-3" />
-                Превью
+                Preview
               </button>
             </div>
             <button
               onClick={onClose}
               className="ml-1 p-1.5 rounded-md text-white/45 hover:text-white hover:bg-white/[0.06] transition"
-              title="Закрыть"
+              title="Close"
             >
               <X className="w-4 h-4" />
             </button>
@@ -141,7 +141,7 @@ export function NoteEditor({ chatId, name, isSystem = false, onClose, onChanged 
           {/* body */}
           <div className="flex-1 min-h-0 overflow-hidden">
             {loading ? (
-              <div className="h-full grid place-items-center text-white/40 text-sm">Загрузка…</div>
+              <div className="h-full grid place-items-center text-white/40 text-sm">Loading…</div>
             ) : tab === 'edit' ? (
               <textarea
                 value={content}
@@ -149,14 +149,14 @@ export function NoteEditor({ chatId, name, isSystem = false, onClose, onChanged 
                 spellCheck={false}
                 className="w-full h-full p-4 bg-transparent text-[13px] text-white/90 outline-none resize-none font-mono"
                 style={{ fontFamily: 'var(--font-mono-loaded), ui-monospace, monospace' }}
-                placeholder="# Заголовок&#10;&#10;- пункт"
+                placeholder="# Heading&#10;&#10;- item"
               />
             ) : (
               <div className="h-full overflow-y-auto px-5 py-4 prose-invert-sm">
                 {content.trim() ? (
                   <Markdown content={content} />
                 ) : (
-                  <div className="text-white/40 text-sm italic">Пусто.</div>
+                  <div className="text-white/40 text-sm italic">Empty.</div>
                 )}
               </div>
             )}
@@ -170,8 +170,8 @@ export function NoteEditor({ chatId, name, isSystem = false, onClose, onChanged 
               </span>
             )}
             <span className="text-[11px] text-white/40">
-              {isSystem ? 'системный файл' : 'пользовательский файл'}
-              {dirty && <span className="ml-2 text-amber-300">• несохранено</span>}
+              {isSystem ? 'system file' : 'user file'}
+              {dirty && <span className="ml-2 text-amber-300">• unsaved</span>}
             </span>
             <span className="flex-1" />
             {!isSystem && (
@@ -181,7 +181,7 @@ export function NoteEditor({ chatId, name, isSystem = false, onClose, onChanged 
                 className="px-2.5 py-1.5 rounded-md text-[11.5px] text-red-300/85 hover:text-red-200 hover:bg-red-500/10 transition flex items-center gap-1 disabled:opacity-50"
               >
                 <Trash2 className="w-3.5 h-3.5" />
-                Удалить
+                Delete
               </button>
             )}
             <button
@@ -190,7 +190,7 @@ export function NoteEditor({ chatId, name, isSystem = false, onClose, onChanged 
               className="px-3 py-1.5 rounded-md text-[12px] bg-gradient-to-b from-violet-500 to-indigo-600 text-white hover:from-violet-400 hover:to-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed transition flex items-center gap-1.5"
             >
               <Save className="w-3.5 h-3.5" />
-              {saving ? 'Сохраняю…' : 'Сохранить'}
+              {saving ? 'Saving…' : 'Save'}
             </button>
           </div>
         </motion.div>

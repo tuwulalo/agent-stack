@@ -14,7 +14,7 @@ export async function GET(
   const provider = getProvider(providerName)
   if (!provider) {
     return NextResponse.json(
-      { ok: false, error: `provider ${providerName} не сконфигурирован` },
+      { ok: false, error: `provider ${providerName} is not configured` },
       { status: 404 }
     )
   }

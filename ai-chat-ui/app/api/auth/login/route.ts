@@ -10,7 +10,7 @@ export async function POST(req: NextRequest) {
   try {
     body = await req.json()
   } catch {
-    return NextResponse.json({ ok: false, error: 'Некорректный JSON' }, { status: 400 })
+    return NextResponse.json({ ok: false, error: 'Invalid JSON' }, { status: 400 })
   }
 
   const username = String(body.username || '').trim()
@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
 
   if (!expectedPass || !secret) {
     return NextResponse.json(
-      { ok: false, error: 'Сервер не сконфигурирован (нет AUTH_PASSWORD / AUTH_SECRET)' },
+      { ok: false, error: 'Server is not configured (missing AUTH_PASSWORD / AUTH_SECRET)' },
       { status: 500 }
     )
   }
@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
   const passOk = timingSafeEqualStr(password, expectedPass)
 
   if (!userOk || !passOk) {
-    return NextResponse.json({ ok: false, error: 'Неверный логин или пароль' }, { status: 401 })
+    return NextResponse.json({ ok: false, error: 'Incorrect username or password' }, { status: 401 })
   }
 
   const exp = Date.now() + THIRTY_DAYS_MS

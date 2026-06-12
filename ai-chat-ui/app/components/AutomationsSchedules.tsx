@@ -24,9 +24,9 @@ import {
 } from '../lib/automations'
 
 const AGENT_DESC: Record<Schedule['agent'], { label: string; icon: React.ComponentType<{className?:string}>; hint: string }> = {
-  hermes: { label: 'Hermes', icon: Sparkles, hint: 'hermes -z "<task>" --yolo · все инструменты Hermes' },
-  claude: { label: 'Claude', icon: Cpu,      hint: 'claude -p "<task>" · Max-подписка · Read/Edit/Bash/...' },
-  shell:  { label: 'Shell',  icon: Terminal, hint: 'bash -c "<task>" · быстрые системные команды' },
+  hermes: { label: 'Hermes', icon: Sparkles, hint: 'hermes -z "<task>" --yolo · all Hermes tools' },
+  claude: { label: 'Claude', icon: Cpu,      hint: 'claude -p "<task>" · Max subscription · Read/Edit/Bash/...' },
+  shell:  { label: 'Shell',  icon: Terminal, hint: 'bash -c "<task>" · fast system commands' },
 }
 
 interface EditorState {
@@ -90,7 +90,7 @@ export function AutomationsSchedules() {
   const onSave = async () => {
     if (!editor) return
     if (!editor.task.trim()) {
-      setError('Опиши задачу')
+      setError('Describe the task')
       return
     }
     setBusy(true)
@@ -103,7 +103,7 @@ export function AutomationsSchedules() {
         })
       } else {
         await createSchedule({
-          name: editor.name || 'Без названия',
+          name: editor.name || 'Untitled',
           cron: editor.cron, agent: editor.agent, task: editor.task, enabled: editor.enabled,
         })
       }
@@ -127,7 +127,7 @@ export function AutomationsSchedules() {
   }
 
   const onDelete = async (s: Schedule) => {
-    if (!confirm(`Удалить «${s.name}»?`)) return
+    if (!confirm(`Delete "${s.name}"?`)) return
     setBusy(true)
     try {
       await deleteSchedule(s.id)
@@ -163,14 +163,14 @@ export function AutomationsSchedules() {
       <section className="col-span-12 lg:col-span-7 space-y-2">
         <div className="flex items-center gap-2 mb-1">
           <Calendar className="w-4 h-4 text-violet-300" />
-          <h2 className="text-[13px] font-medium text-white/90">Расписания</h2>
+          <h2 className="text-[13px] font-medium text-white/90">Schedules</h2>
           <span className="text-[11px] text-white/35">{schedules.length}</span>
           <span className="flex-1" />
           <button
             onClick={() => void reload()}
             disabled={loading}
             className="p-1.5 rounded text-white/45 hover:text-white hover:bg-white/[0.06] transition"
-            title="Обновить"
+            title="Refresh"
           >
             <RefreshCw className={'w-3.5 h-3.5 ' + (loading ? 'animate-spin' : '')} />
           </button>
@@ -179,7 +179,7 @@ export function AutomationsSchedules() {
             className="px-3 py-1.5 rounded-md text-[12px] bg-gradient-to-b from-violet-500 to-indigo-600 text-white hover:from-violet-400 hover:to-indigo-500 transition flex items-center gap-1.5"
           >
             <Plus className="w-3.5 h-3.5" />
-            Новое
+            New
           </button>
         </div>
 
@@ -190,21 +190,21 @@ export function AutomationsSchedules() {
         )}
 
         {loading && schedules.length === 0 ? (
-          <div className="py-10 text-center text-white/40 text-[12.5px]">загрузка…</div>
+          <div className="py-10 text-center text-white/40 text-[12.5px]">loading…</div>
         ) : schedules.length === 0 ? (
           <div className="px-4 py-12 text-center rounded-lg border border-dashed border-white/10">
             <Clock className="w-10 h-10 text-white/15 mx-auto mb-3" />
-            <div className="text-[13px] text-white/65 mb-1">Расписаний пока нет</div>
+            <div className="text-[13px] text-white/65 mb-1">No schedules yet</div>
             <div className="text-[11.5px] text-white/40 mb-4 max-w-[340px] mx-auto leading-relaxed">
-              Создай задачу с cron-выражением — она будет запускаться в фоне и
-              писать результаты в историю.
+              Create a task with a cron expression — it will run in the background
+              and write its results to the history.
             </div>
             <button
               onClick={onCreate}
               className="px-3 py-1.5 rounded-md text-[12px] bg-violet-500/20 hover:bg-violet-500/30 text-violet-100 border border-violet-400/25 transition inline-flex items-center gap-1.5"
             >
               <Plus className="w-3.5 h-3.5" />
-              Создать первое
+              Create the first one
             </button>
           </div>
         ) : (
@@ -236,7 +236,7 @@ export function AutomationsSchedules() {
                         </span>
                         {!s.enabled && (
                           <span className="text-[10px] text-amber-300 px-1.5 py-0.5 rounded bg-amber-400/5 border border-amber-400/20">
-                            пауза
+                            paused
                           </span>
                         )}
                       </div>
@@ -246,7 +246,7 @@ export function AutomationsSchedules() {
                       <div className="mt-1 flex items-center gap-2.5 text-[10.5px] text-white/35">
                         <span>cron <code className="text-white/55">{s.cron}</code></span>
                         <span>·</span>
-                        <span>{s.lastFireAt ? `последний запуск ${formatRelTime(s.lastFireAt)}` : 'ни разу не запускался'}</span>
+                        <span>{s.lastFireAt ? `last run ${formatRelTime(s.lastFireAt)}` : 'never run yet'}</span>
                         {s.lastFireAt && (
                           <span className={s.lastFireOk ? 'text-emerald-300' : 'text-red-300'}>
                             {s.lastFireOk ? '✓' : '✗'}
@@ -281,7 +281,7 @@ export function AutomationsSchedules() {
                         onClick={() => onFire(s)}
                         disabled={busy}
                         className="p-1.5 rounded text-white/55 hover:text-violet-300 hover:bg-white/[0.06] transition disabled:opacity-40"
-                        title="Запустить сейчас"
+                        title="Run now"
                       >
                         <Play className="w-3.5 h-3.5" />
                       </button>
@@ -292,14 +292,14 @@ export function AutomationsSchedules() {
                           'p-1.5 rounded hover:bg-white/[0.06] transition disabled:opacity-40 ' +
                           (s.enabled ? 'text-emerald-300' : 'text-white/40 hover:text-white')
                         }
-                        title={s.enabled ? 'Поставить на паузу' : 'Включить'}
+                        title={s.enabled ? 'Pause' : 'Enable'}
                       >
                         <Power className="w-3.5 h-3.5" />
                       </button>
                       <button
                         onClick={() => onEdit(s)}
                         className="p-1.5 rounded text-white/55 hover:text-white hover:bg-white/[0.06] transition"
-                        title="Редактировать"
+                        title="Edit"
                       >
                         <Pencil className="w-3.5 h-3.5" />
                       </button>
@@ -307,7 +307,7 @@ export function AutomationsSchedules() {
                         onClick={() => onDelete(s)}
                         disabled={busy}
                         className="p-1.5 rounded text-white/40 hover:text-red-300 hover:bg-red-500/10 transition disabled:opacity-40"
-                        title="Удалить"
+                        title="Delete"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
@@ -324,12 +324,12 @@ export function AutomationsSchedules() {
       <aside className="col-span-12 lg:col-span-5">
         <div className="flex items-center gap-2 mb-1.5">
           <Clock className="w-4 h-4 text-violet-300" />
-          <h2 className="text-[13px] font-medium text-white/90">История запусков</h2>
+          <h2 className="text-[13px] font-medium text-white/90">Run history</h2>
           <span className="text-[11px] text-white/35">{runs.length}</span>
         </div>
         {runs.length === 0 ? (
           <div className="px-4 py-8 text-center rounded-lg border border-dashed border-white/10 text-[11.5px] text-white/40">
-            Пока ничего не запускалось.
+            Nothing has run yet.
           </div>
         ) : (
           <div className="space-y-1 max-h-[calc(100vh-220px)] overflow-y-auto pr-1">
@@ -403,7 +403,7 @@ function ScheduleEditor({
         <div className="flex items-center gap-2 px-4 py-3 border-b border-white/[0.06]">
           <Calendar className="w-4 h-4 text-violet-300" />
           <div className="text-[14px] font-medium text-white/95 flex-1">
-            {value.id ? 'Редактировать расписание' : 'Новое расписание'}
+            {value.id ? 'Edit schedule' : 'New schedule'}
           </div>
           <button onClick={onClose} className="p-1.5 rounded text-white/45 hover:text-white hover:bg-white/[0.06]">
             <X className="w-4 h-4" />
@@ -411,17 +411,17 @@ function ScheduleEditor({
         </div>
 
         <div className="px-4 py-4 space-y-3">
-          <Field label="Название">
+          <Field label="Name">
             <input
               autoFocus
               value={value.name}
               onChange={(e) => onChange({ ...value, name: e.target.value })}
-              placeholder="Например: ежеутренний отчёт о VPS"
+              placeholder="e.g. Daily morning VPS report"
               className={inputStyle}
             />
           </Field>
 
-          <Field label="Агент">
+          <Field label="Agent">
             <div className="flex gap-2">
               {(['hermes', 'claude', 'shell'] as const).map((a) => {
                 const A = AGENT_DESC[a]
@@ -448,11 +448,11 @@ function ScheduleEditor({
             </div>
           </Field>
 
-          <Field label="Расписание (cron)">
+          <Field label="Schedule (cron)">
             <input
               value={value.cron}
               onChange={(e) => onChange({ ...value, cron: e.target.value })}
-              placeholder="0 9 * * *  (мин час день месяц день_недели)"
+              placeholder="0 9 * * *  (min hour day month weekday)"
               className={inputStyle + ' font-mono'}
             />
             <div className="mt-2 flex flex-wrap gap-1">
@@ -473,15 +473,15 @@ function ScheduleEditor({
             </div>
           </Field>
 
-          <Field label="Задача">
+          <Field label="Task">
             <textarea
               value={value.task}
               onChange={(e) => onChange({ ...value, task: e.target.value })}
               rows={5}
               spellCheck={false}
               placeholder={value.agent === 'hermes'
-                ? 'Опиши задачу для Hermes на естественном языке…'
-                : 'Bash-команда, например:  uptime && df -h | head -5'}
+                ? 'Describe a task for Hermes in plain language…'
+                : 'Bash command, e.g.:  uptime && df -h | head -5'}
               className={inputStyle + ' font-mono resize-y min-h-[110px]'}
             />
           </Field>
@@ -493,7 +493,7 @@ function ScheduleEditor({
               onChange={(e) => onChange({ ...value, enabled: e.target.checked })}
               className="w-4 h-4 accent-violet-500"
             />
-            Включить сразу
+            Enable right away
           </label>
         </div>
 
@@ -502,7 +502,7 @@ function ScheduleEditor({
             onClick={onClose}
             className="px-3 py-1.5 rounded-md text-[12px] text-white/65 hover:text-white hover:bg-white/[0.06] transition"
           >
-            Отмена
+            Cancel
           </button>
           <span className="flex-1" />
           <button
@@ -510,7 +510,7 @@ function ScheduleEditor({
             disabled={busy || !value.task.trim()}
             className="px-3.5 py-1.5 rounded-md text-[12px] bg-gradient-to-b from-violet-500 to-indigo-600 text-white hover:from-violet-400 hover:to-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed transition"
           >
-            {busy ? 'Сохраняю…' : value.id ? 'Сохранить' : 'Создать'}
+            {busy ? 'Saving…' : value.id ? 'Save' : 'Create'}
           </button>
         </div>
       </motion.div>

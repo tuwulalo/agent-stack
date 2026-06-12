@@ -134,7 +134,7 @@ html, body {
 
 /* ============================================================
    ZEK — design tokens + mascot animations
-   (из claude.ai/design handoff — отряд из 10 саб-агентов)
+   (from the claude.ai/design handoff — squad of 10 sub-agents)
    ============================================================ */
 :root {
   --zek-bg:           #0a0a0b;
@@ -155,10 +155,10 @@ html, body {
   --zek-red:          #f87171;
 }
 
-/* ---------- мacкот: общее ---------- */
+/* ---------- mascot: shared ---------- */
 .mascot-svg-el { display: block; overflow: visible; }
 
-/* живой режим — лёгкое «дыхание» + подсветка */
+/* live mode — gentle "breathing" + glow */
 .mascot-svg-el.is-live {
   animation: zek-breathe 2.4s ease-in-out infinite;
   filter: drop-shadow(0 0 8px var(--zek-accent-soft));
@@ -168,11 +168,11 @@ html, body {
   50%      { transform: translateY(-1.5px) scale(1.03); }
 }
 
-/* Систо — крутится шестерня */
+/* Sisto — spinning gear */
 .m-sisto.is-live .m-rotor { animation: zek-spin 4s linear infinite; transform-origin: 32px 32px; transform-box: fill-box; }
 @keyframes zek-spin { to { transform: rotate(360deg); } }
 
-/* Шилд — пульс щита + рот «дышит» */
+/* Shild — shield pulse + "breathing" mouth */
 .m-shild.is-live .m-shield-body { animation: zek-pulse 1.4s ease-in-out infinite; transform-origin: 32px 32px; transform-box: fill-box; }
 .m-shild.is-live .m-shield-mouth { animation: zek-mouth-flat 1.6s ease-in-out infinite; }
 @keyframes zek-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.78; } }
@@ -181,20 +181,20 @@ html, body {
   50%      { d: path("M27 38 Q32 36 37 38"); }
 }
 
-/* Кэдди — LED-ы перемигиваются */
+/* Keddi — blinking LEDs */
 .m-keddi.is-live .m-led-1 { animation: zek-blink 1.2s -0.0s ease-in-out infinite; }
 .m-keddi.is-live .m-led-2 { animation: zek-blink 1.2s -0.4s ease-in-out infinite; }
 .m-keddi.is-live .m-led-3 { animation: zek-blink 1.2s -0.8s ease-in-out infinite; }
 @keyframes zek-blink { 0%, 100% { opacity: 0.25; } 30% { opacity: 1; } 60% { opacity: 0.4; } }
 
-/* Хранитель — скан-линия гуляет */
+/* Hranitel — wandering scan line */
 .m-hranitel.is-live .m-scan { animation: zek-scanline 2.2s ease-in-out infinite; }
 @keyframes zek-scanline {
   0%, 100% { transform: translateY(0); opacity: 0.4; }
   50%      { transform: translateY(14px); opacity: 1; }
 }
 
-/* Логан — строки лога «печатаются» */
+/* Logan — log lines "typing" in */
 .m-logan.is-live .m-loglines rect:nth-child(1) { animation: zek-typeline 1.8s steps(20) -0.0s infinite; transform-origin: left; }
 .m-logan.is-live .m-loglines rect:nth-child(2) { animation: zek-typeline 1.8s steps(20) -0.6s infinite; transform-origin: left; }
 .m-logan.is-live .m-loglines rect:nth-child(3) { animation: zek-typeline 1.8s steps(20) -1.2s infinite; transform-origin: left; }
@@ -204,18 +204,18 @@ html, body {
   100% { transform: scaleX(1); opacity: 0.3; }
 }
 
-/* Сигнал — арки пульсируют наружу */
+/* Signal — arcs pulsing outward */
 .m-signal.is-live .m-arc-1 { animation: zek-arcpulse 1.4s ease-in-out -0.0s infinite; }
 .m-signal.is-live .m-arc-2 { animation: zek-arcpulse 1.4s ease-in-out -0.46s infinite; }
 .m-signal.is-live .m-arc-3 { animation: zek-arcpulse 1.4s ease-in-out -0.92s infinite; }
 @keyframes zek-arcpulse { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
 
-/* Мостик — звенья перемигиваются */
+/* Mostik — links blinking in turn */
 .m-mostik.is-live .m-link-l { animation: zek-glow 1.2s ease-in-out -0.0s infinite; transform-origin: center; }
 .m-mostik.is-live .m-link-r { animation: zek-glow 1.2s ease-in-out -0.6s infinite; transform-origin: center; }
 @keyframes zek-glow { 0%, 100% { opacity: 0.55; } 50% { opacity: 1; } }
 
-/* Кувалд — машет молотком */
+/* Kuvald — swinging the hammer */
 .m-kuvald.is-live .m-hammer {
   animation: zek-swing 1.1s cubic-bezier(.4,0,.6,1) infinite;
   transform-origin: 32px 50px;
@@ -226,7 +226,7 @@ html, body {
   50%      { transform: rotate( 18deg); }
 }
 
-/* Окуляр — зрачок ходит туда-сюда */
+/* Okular — pupil darting back and forth */
 .m-okular.is-live .m-pupil { animation: zek-look 3s ease-in-out infinite; transform-origin: 32px 32px; transform-box: fill-box; }
 @keyframes zek-look {
   0%, 100% { transform: translate(0, 0); }
@@ -235,7 +235,7 @@ html, body {
   75%      { transform: translate(5px, -1px); }
 }
 
-/* Маэстро — драгоценности зажигаются по очереди */
+/* Maestro — gems lighting up one by one */
 .m-maestro.is-live .m-gem-1 { animation: zek-gem 1.6s ease-in-out -0.0s infinite; }
 .m-maestro.is-live .m-gem-2 { animation: zek-gem 1.6s ease-in-out -0.55s infinite; }
 .m-maestro.is-live .m-gem-3 { animation: zek-gem 1.6s ease-in-out -1.10s infinite; }
@@ -244,7 +244,7 @@ html, body {
   50%      { opacity: 1;   transform: scale(1.5); }
 }
 
-/* ---------- squad page: дуги делегирования ---------- */
+/* ---------- squad page: delegation arcs ---------- */
 .connection-path { fill: none; stroke-width: 1.2; stroke-linecap: round; }
 .connection-path.active {
   stroke: var(--zek-purple);
@@ -259,7 +259,7 @@ html, body {
 }
 @keyframes zek-flow { to { stroke-dashoffset: -18; } }
 
-/* ---------- squad page: pulse-индикатор живого режима ---------- */
+/* ---------- squad page: live-mode pulse indicator ---------- */
 @keyframes zek-pulse-dot {
   0%, 100% { opacity: 1; transform: scale(1); }
   50%      { opacity: 0.4; transform: scale(1.4); }
@@ -272,7 +272,7 @@ body.zek-density-comfy   { font-size: 15px; }
 body.zek-density-comfy   .squad-grid-cell { min-height: 260px !important; padding: 32px 24px !important; }
 
 /* ============================================================
-   ZEK ETHER — граф межагентных диалогов (тайлы + дуги + бабблы)
+   ZEK ETHER — inter-agent dialog graph (tiles + arcs + bubbles)
    ============================================================ */
 .zek-ether-canvas {
   position: relative;
@@ -355,7 +355,7 @@ body.zek-density-comfy   .squad-grid-cell { min-height: 260px !important; paddin
   transition: all .2s;
   font-family: inherit;
   color: var(--zek-text);
-  /* spawn-in анимация когда тайл появляется в DOM */
+  /* spawn-in animation when the tile enters the DOM */
   animation: zek-tile-spawn 0.55s cubic-bezier(0.2, 0.8, 0.3, 1.2);
 }
 @keyframes zek-tile-spawn {
@@ -420,7 +420,7 @@ body.zek-density-comfy   .squad-grid-cell { min-height: 260px !important; paddin
 .zek-bubble-row.right .zek-bubble.delegate { border-left: 1px solid var(--zek-line); border-right: 2px solid var(--zek-purple); }
 .zek-bubble-row.right .zek-bubble.reply    { border-left: 1px solid var(--zek-line); border-right: 2px solid var(--zek-accent); }
 
-/* «только что появилась» — flash для новой дуги на 2s */
+/* "just appeared" — 2s flash for a new arc */
 .edge.just-appeared .zek-edge-path {
   animation: zek-edge-flash 2s ease-out;
 }

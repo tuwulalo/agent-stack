@@ -9,9 +9,9 @@ import { createSession, getSession, touchSession } from './agent-sessions.js';
 
 const STATE_FILE = process.env.TELEGRAM_STATE_FILE || '/opt/kimi-mcp-proxy/telegram-state.json';
 const THREADS = {
-  agent: 'Агент (TG)',
-  zavod: 'Завод 2 УИ (TG)',
-  apka:  'Апка (TG)',
+  agent: 'Agent (TG)',
+  zavod: 'Zavod 2 UI (TG)',
+  apka:  'Apka (TG)',
 };
 
 function loadState() {
@@ -61,7 +61,7 @@ export function startTelegramBot({ token }) {
 
   async function send(chatId, text) {
     const MAX = 3900;
-    const s = String(text || '').trim() || '(пустой ответ)';
+    const s = String(text || '').trim() || '(empty response)';
     for (let i = 0; i < s.length; i += MAX) {
       await tg('sendMessage', { chat_id: chatId, text: s.slice(i, i + MAX), disable_web_page_preview: true });
     }
@@ -102,21 +102,21 @@ export function startTelegramBot({ token }) {
     if (!state.ownerId) {
       state.ownerId = chatId;
       saveState(state);
-      await send(chatId, `🔒 Бот залочен на тебя (chat id ${chatId}).\n\nПотоки: /agent · /zavod · /apka\nТекущий: ${THREADS[state.active]}\nПросто пиши задачу — она выполнится на VPS в активном потоке. /threads — список, /new — новый поток.`);
+      await send(chatId, `🔒 The bot is now locked to you (chat id ${chatId}).\n\nThreads: /agent · /zavod · /apka\nCurrent: ${THREADS[state.active]}\nJust type a task — it runs on the VPS in the active thread. /threads — list, /new — new thread.`);
       return;
     }
     if (chatId !== state.ownerId) {
-      await send(chatId, '⛔ Доступ запрещён.');
+      await send(chatId, '⛔ Access denied.');
       return;
     }
 
     const t = text.trim();
     if (t === '/start' || t === '/help') {
-      await send(chatId, `Потоки: /agent · /zavod · /apka (текущий: ${THREADS[state.active]}).\nПиши задачу — выполнится на VPS. /threads — список, /new — сброс потока.`);
+      await send(chatId, `Threads: /agent · /zavod · /apka (current: ${THREADS[state.active]}).\nType a task — it runs on the VPS. /threads — list, /new — reset the thread.`);
       return;
     }
     if (t === '/threads') {
-      const lines = Object.entries(THREADS).map(([k, n]) => `${k === state.active ? '▶' : '•'} /${k} — ${n}${state.threads[k] ? ' (есть)' : ''}`);
+      const lines = Object.entries(THREADS).map(([k, n]) => `${k === state.active ? '▶' : '•'} /${k} — ${n}${state.threads[k] ? ' (exists)' : ''}`);
       await send(chatId, lines.join('\n'));
       return;
     }
@@ -124,27 +124,27 @@ export function startTelegramBot({ token }) {
       state.active = t.slice(1);
       saveState(state);
       ensureThreadSession(state.active);
-      await send(chatId, `▶ Поток: ${THREADS[state.active]}`);
+      await send(chatId, `▶ Thread: ${THREADS[state.active]}`);
       return;
     }
     if (t === '/new') {
       delete state.threads[state.active];
       saveState(state);
       ensureThreadSession(state.active);
-      await send(chatId, `🆕 Новый поток ${THREADS[state.active]}.`);
+      await send(chatId, `🆕 New thread ${THREADS[state.active]}.`);
       return;
     }
     if (!t) return;
 
     const key = state.active;
-    if (busy.has(key)) { await send(chatId, '⏳ Ещё обрабатываю прошлое сообщение в этом потоке.'); return; }
+    if (busy.has(key)) { await send(chatId, '⏳ Still processing the previous message in this thread.'); return; }
     busy.add(key);
     const session = ensureThreadSession(key);
     await tg('sendChatAction', { chat_id: chatId, action: 'typing' });
     try {
       const { out, code, err } = await runAgent(session, t);
-      if (err) await send(chatId, '⚠ Ошибка запуска: ' + err);
-      else await send(chatId, out || `(агент завершился, exit=${code}, без текста)`);
+      if (err) await send(chatId, '⚠ Launch error: ' + err);
+      else await send(chatId, out || `(agent finished, exit=${code}, no text)`);
     } finally {
       busy.delete(key);
     }

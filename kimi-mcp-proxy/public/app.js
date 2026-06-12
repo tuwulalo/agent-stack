@@ -12,11 +12,11 @@ async function checkHealth() {
     const response = await fetch('/health');
     const data = await response.json();
 
-    healthText.textContent = data.ok ? 'Сервер онлайн' : 'Сервер недоступен';
+    healthText.textContent = data.ok ? 'Server online' : 'Server unavailable';
     modelText.textContent = `model: ${data.model || 'unknown'}`;
     statusDot.classList.toggle('ok', Boolean(data.ok));
   } catch {
-    healthText.textContent = 'Сервер недоступен';
+    healthText.textContent = 'Server unavailable';
     modelText.textContent = 'model: unknown';
     statusDot.classList.remove('ok');
   }
@@ -29,7 +29,7 @@ form.addEventListener('submit', async (event) => {
   const proxyKey = proxyKeyInput.value.trim();
 
   if (!prompt) {
-    output.textContent = 'Введите сообщение.';
+    output.textContent = 'Enter a message.';
     return;
   }
 
@@ -43,7 +43,7 @@ form.addEventListener('submit', async (event) => {
 
   const submitButton = form.querySelector('button[type="submit"]');
   submitButton.disabled = true;
-  output.textContent = 'Запрос отправлен...';
+  output.textContent = 'Request sent...';
 
   try {
     const response = await fetch('/v1/chat/completions', {
@@ -64,7 +64,7 @@ form.addEventListener('submit', async (event) => {
 
     output.textContent = data.choices?.[0]?.message?.content || JSON.stringify(data, null, 2);
   } catch (error) {
-    output.textContent = `Ошибка запроса: ${error.message}`;
+    output.textContent = `Request error: ${error.message}`;
   } finally {
     submitButton.disabled = false;
   }
@@ -72,9 +72,9 @@ form.addEventListener('submit', async (event) => {
 
 copyButton.addEventListener('click', async () => {
   await navigator.clipboard.writeText(output.textContent);
-  copyButton.textContent = 'Скопировано';
+  copyButton.textContent = 'Copied';
   setTimeout(() => {
-    copyButton.textContent = 'Скопировать';
+    copyButton.textContent = 'Copy';
   }, 1400);
 });
 

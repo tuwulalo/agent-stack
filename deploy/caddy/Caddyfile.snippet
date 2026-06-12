@@ -1,21 +1,21 @@
 # =====================================================================
-#  Caddyfile-snippet для agent-stack
-#  Положи внутрь /etc/caddy/Caddyfile (или подключи `import`).
-#  Замени your-domain.tld на свой реальный домен с А-записью на VPS.
+#  Caddyfile snippet for agent-stack
+#  Drop it into /etc/caddy/Caddyfile (or include it via `import`).
+#  Replace your-domain.tld with your real domain whose A record points to the VPS.
 # =====================================================================
 
 your-domain.tld {
     encode zstd gzip
 
-    # Прокси (Express on :3001), доступ под /_kp/*
-    # handle_path срежет /_kp перед форвардом.
+    # Proxy (Express on :3001), exposed under /_kp/*
+    # handle_path strips /_kp before forwarding.
     handle_path /_kp/* {
         reverse_proxy localhost:3001 {
             flush_interval -1
         }
     }
 
-    # Опционально — статические сайты агента: /sites/<slug>/
+    # Optional — static sites built by the agent: /sites/<slug>/
     handle_path /sites/* {
         root * /opt/agent-sites
         encode zstd gzip
@@ -25,7 +25,7 @@ your-domain.tld {
         header @img Cache-Control "public, max-age=86400, immutable"
     }
 
-    # Всё остальное — Next.js UI (port 3002)
+    # Everything else — Next.js UI (port 3002)
     handle {
         encode zstd gzip
         reverse_proxy localhost:3002 {

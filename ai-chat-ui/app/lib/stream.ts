@@ -31,7 +31,7 @@ export async function streamChat({ model, messages, signal, onDelta }: StreamArg
     try { detail = await res.text() } catch { /* ignore */ }
     throw new Error(`HTTP ${res.status}${detail ? ` — ${detail.slice(0, 200)}` : ''}`)
   }
-  if (!res.body) throw new Error('Пустой ответ от API')
+  if (!res.body) throw new Error('Empty response from the API')
 
   const reader = res.body.getReader()
   const decoder = new TextDecoder()

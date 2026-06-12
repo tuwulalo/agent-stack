@@ -4,29 +4,29 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { Sliders, X } from 'lucide-react'
 
 /**
- * Лёгкая Tweaks-панель из zek-handoff. Floating gear-кнопка в правом нижнем
- * углу → popover с тремя контролами:
- *   • Акцентный цвет (6 пресетов — green / purple / amber / cyan / pink / red)
- *   • Плотность (compact / regular / comfy) — segmented
- *   • Шрифт (Geist / IBM Plex Sans / Mono) — segmented
+ * Lightweight Tweaks panel from the zek handoff. Floating gear button in the
+ * bottom-right corner → popover with three controls:
+ *   • Accent color (6 presets — green / purple / amber / cyan / pink / red)
+ *   • Density (compact / regular / comfy) — segmented
+ *   • Font (Geist / IBM Plex Sans / Mono) — segmented
  *
- * Применяется через CSS-переменные на <html>:
+ * Applied via CSS variables on <html>:
  *   --zek-accent, --zek-accent-soft, --zek-accent-line
- * + класс density-{compact|regular|comfy} на <body>.
+ * + a density-{compact|regular|comfy} class on <body>.
  *
- * Сохраняется в localStorage под ключом 'zek-tweaks-v1'.
+ * Persisted in localStorage under the 'zek-tweaks-v1' key.
  */
 
 const LS_KEY = 'zek-tweaks-v1'
 
 type AccentKey = 'green' | 'purple' | 'amber' | 'cyan' | 'pink' | 'red'
 const ACCENTS: Record<AccentKey, { hex: string; soft: string; line: string; label: string }> = {
-  green:  { hex: '#4ade80', soft: '#4ade8022', line: '#4ade8044', label: 'зелёный' },
-  purple: { hex: '#a78bfa', soft: '#a78bfa22', line: '#a78bfa44', label: 'фиолет' },
-  amber:  { hex: '#fbbf24', soft: '#fbbf2422', line: '#fbbf2444', label: 'янтарь' },
-  cyan:   { hex: '#22d3ee', soft: '#22d3ee22', line: '#22d3ee44', label: 'циан' },
-  pink:   { hex: '#f472b6', soft: '#f472b622', line: '#f472b644', label: 'розовый' },
-  red:    { hex: '#f87171', soft: '#f8717122', line: '#f8717144', label: 'красный' },
+  green:  { hex: '#4ade80', soft: '#4ade8022', line: '#4ade8044', label: 'green' },
+  purple: { hex: '#a78bfa', soft: '#a78bfa22', line: '#a78bfa44', label: 'purple' },
+  amber:  { hex: '#fbbf24', soft: '#fbbf2422', line: '#fbbf2444', label: 'amber' },
+  cyan:   { hex: '#22d3ee', soft: '#22d3ee22', line: '#22d3ee44', label: 'cyan' },
+  pink:   { hex: '#f472b6', soft: '#f472b622', line: '#f472b644', label: 'pink' },
+  red:    { hex: '#f87171', soft: '#f8717122', line: '#f8717144', label: 'red' },
 }
 
 type Density = 'compact' | 'regular' | 'comfy'
@@ -129,7 +129,7 @@ export function TweaksPanel() {
             <button
               onClick={() => setOpen(false)}
               className="w-6 h-6 rounded grid place-items-center text-white/45 hover:text-white hover:bg-white/[0.06] transition"
-              title="закрыть"
+              title="close"
             >
               <X className="w-3 h-3" />
             </button>
@@ -139,7 +139,7 @@ export function TweaksPanel() {
             {/* ACCENT COLOR */}
             <div>
               <div className="font-mono text-[9.5px] uppercase tracking-[0.12em] text-white/40 mb-2">
-                Акцент
+                Accent
               </div>
               <div className="grid grid-cols-6 gap-1.5">
                 {(Object.keys(ACCENTS) as AccentKey[]).map((k) => {
@@ -165,7 +165,7 @@ export function TweaksPanel() {
             {/* DENSITY */}
             <div>
               <div className="font-mono text-[9.5px] uppercase tracking-[0.12em] text-white/40 mb-2">
-                Плотность
+                Density
               </div>
               <div className="flex gap-1 p-0.5 rounded-md bg-white/[0.04]">
                 {(['compact', 'regular', 'comfy'] as Density[]).map((d) => {
@@ -181,7 +181,7 @@ export function TweaksPanel() {
                           : 'text-white/55 hover:text-white/85')
                       }
                     >
-                      {d === 'compact' ? 'плотно' : d === 'regular' ? 'обычно' : 'просторно'}
+                      {d === 'compact' ? 'compact' : d === 'regular' ? 'regular' : 'roomy'}
                     </button>
                   )
                 })}
@@ -191,7 +191,7 @@ export function TweaksPanel() {
             {/* FONT */}
             <div>
               <div className="font-mono text-[9.5px] uppercase tracking-[0.12em] text-white/40 mb-2">
-                Шрифт
+                Font
               </div>
               <div className="flex gap-1 p-0.5 rounded-md bg-white/[0.04]">
                 {(Object.keys(FONTS) as FontKey[]).map((f) => {
@@ -216,7 +216,7 @@ export function TweaksPanel() {
             </div>
 
             <div className="font-mono text-[9.5px] text-white/30 text-center pt-1 border-t border-white/[0.04]">
-              сохраняется в браузере
+              saved in your browser
             </div>
           </div>
         </div>
@@ -224,7 +224,7 @@ export function TweaksPanel() {
 
       <button
         onClick={() => setOpen((v) => !v)}
-        title="настройки оформления"
+        title="appearance settings"
         className="w-10 h-10 rounded-full border transition shadow-lg flex items-center justify-center"
         style={{
           background: open ? 'var(--zek-accent)' : 'rgba(20,20,25,0.92)',

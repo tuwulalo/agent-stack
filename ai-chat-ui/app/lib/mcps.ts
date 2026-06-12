@@ -82,10 +82,10 @@ export const restartMcp = (id: string) =>
 
 export function statusLabel(s: McpStatus): string {
   return ({
-    connecting: 'подключаю…',
-    connected:  'подключено',
-    failed:     'ошибка',
-    stopped:    'остановлено',
+    connecting: 'connecting…',
+    connected:  'connected',
+    failed:     'error',
+    stopped:    'stopped',
     unknown:    '—',
   })[s] || s
 }
