@@ -16,6 +16,24 @@ function readInteger(name, fallback) {
   return parsed;
 }
 
+// Refuse to boot with no key or the publicly known placeholder from
+// .env.example — otherwise the proxy is open to the whole internet.
+// Conscious opt-out for local experiments: ALLOW_NO_AUTH=1.
+const PLACEHOLDER_PROXY_KEYS = new Set(['', 'replace-with-a-long-random-string', 'change-me']);
+if (PLACEHOLDER_PROXY_KEYS.has(process.env.PROXY_API_KEY || '') && process.env.ALLOW_NO_AUTH !== '1') {
+  console.error(
+    'PROXY_API_KEY is empty or still the placeholder from .env.example.\n' +
+    'Set a long random value (e.g. `openssl rand -hex 32`) in kimi-mcp-proxy/.env,\n' +
+    'or set ALLOW_NO_AUTH=1 to run without auth (local experiments only).'
+  );
+  process.exit(1);
+}
+
+if (process.env.JWT_SECRET && process.env.JWT_SECRET.length < 32) {
+  console.error('JWT_SECRET must be at least 32 characters.');
+  process.exit(1);
+}
+
 export const config = {
   host: process.env.HOST || '0.0.0.0',
   port: readInteger('PORT', 3000),

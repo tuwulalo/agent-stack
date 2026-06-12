@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  proxy:
+    name: kimi-mcp-proxy syntax check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: kimi-mcp-proxy/package-lock.json
+      - name: Install dependencies
+        working-directory: kimi-mcp-proxy
+        run: npm ci --omit=dev
+      - name: Syntax-check all sources
+        run: |
+          for f in kimi-mcp-proxy/src/*.js kimi-mcp-proxy/hooks/*.mjs cli/*.mjs; do
+            node --check "$f"
+          done
+      - name: Validate JSON configs
+        run: |
+          for f in kimi-mcp-proxy/agents.json kimi-mcp-proxy/mcps.json; do
+            node -e "JSON.parse(require('fs').readFileSync('$f','utf8'))"
+          done
+
+  ui:
+    name: ai-chat-ui build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: ai-chat-ui/package-lock.json
+      - name: Install dependencies
+        working-directory: ai-chat-ui
+        run: npm ci
+      - name: Build
+        working-directory: ai-chat-ui
+        run: npm run build

@@ -30,8 +30,13 @@ export async function middleware(req: NextRequest) {
 
   const secret = process.env.AUTH_SECRET
   if (!secret) {
-    // Auth disabled — preserves old behavior when env not configured yet.
-    return NextResponse.next()
+    // Fail closed in production: an unconfigured instance must not expose
+    // the chat to the whole internet. Dev mode stays open for local work.
+    if (process.env.NODE_ENV !== 'production') return NextResponse.next()
+    return new NextResponse(
+      'Authentication is not configured. Set AUTH_SECRET, AUTH_USER and AUTH_PASSWORD in ai-chat-ui/.env.local and restart.',
+      { status: 503 },
+    )
   }
 
   const token = req.cookies.get(SESSION_COOKIE)?.value

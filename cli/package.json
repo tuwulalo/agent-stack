@@ -1,7 +1,13 @@
 {
   "name": "agent-stack-cli",
   "version": "0.1.0",
-  "description": "Десктопный CLI для входа в self-hosted agent-stack на VPS",
+  "description": "Desktop CLI for signing in to a self-hosted agent-stack on a VPS",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tuwulalo/agent-stack.git",
+    "directory": "cli"
+  },
   "type": "module",
   "bin": {
     "agent-stack": "./agent-stack.mjs"
