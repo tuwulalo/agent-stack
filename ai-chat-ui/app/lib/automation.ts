@@ -27,10 +27,13 @@ export type AutomationLine =
   | { kind: 'ask_user'; payload: AskUserPayload; answered?: string[][] }
 
 export type AutomationAgentId = 'hermes' | 'claude' | 'shell'
+export type ClaudeModelId = 'opus' | 'claude-fable-5' | 'haiku' | 'sonnet'
 
 export interface AutomationRunArgs {
   agent: AutomationAgentId
   task: string
+  /** Claude model override (--model <id>). Ignored for Hermes/Shell. */
+  model?: ClaudeModelId | null
   /** Resume a previous Claude session (--resume <uuid>). Ignored for Hermes/Shell. */
   sessionId?: string | null
   /** live-join: attach to a running session's stream, never spawn a new turn */
@@ -46,15 +49,16 @@ export interface AutomationRunArgs {
  *   claude  → /automations/run-stream  (raw stdout/stderr stream)
  *   shell   → /automations/run-stream  (raw stdout/stderr stream)
  */
-export async function runAutomation({ agent, task, sessionId, attachOnly, signal, onLine }: AutomationRunArgs): Promise<void> {
+export async function runAutomation({ agent, task, model, sessionId, attachOnly, signal, onLine }: AutomationRunArgs): Promise<void> {
   const startedAt = Date.now()
 
   // Non-Hermes agents go through the simple SSE bridge.
   if (agent === 'claude' || agent === 'shell') {
     // Short command-only meta line (full prompt is rendered as a separate
     // 'prompt' block emitted by the page before this fires).
+    const modelPart = agent === 'claude' && model ? ` --model ${model}` : ''
     const meta = agent === 'claude'
-      ? (sessionId ? 'claude -p --resume <id> · stream-json' : 'claude -p · stream-json')
+      ? (sessionId ? `claude -p${modelPart} --resume <id> · stream-json` : `claude -p${modelPart} · stream-json`)
       : 'bash -c'
     onLine({ kind: 'meta', text: meta })
 
@@ -62,13 +66,13 @@ export async function runAutomation({ agent, task, sessionId, attachOnly, signal
       method: 'POST',
       signal,
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ agent, task, sessionId: sessionId || undefined, attachOnly: attachOnly || undefined }),
+      body: JSON.stringify({ agent, task, model: agent === 'claude' ? model || undefined : undefined, sessionId: sessionId || undefined, attachOnly: attachOnly || undefined }),
     })
     if (!res.ok) {
       const detail = await res.text().catch(() => '')
       throw new Error(`HTTP ${res.status}${detail ? ' — ' + detail.slice(0, 250) : ''}`)
     }
-    if (!res.body) throw new Error('Пустой ответ')
+    if (!res.body) throw new Error('Empty response')
     const reader = res.body.getReader()
     const dec = new TextDecoder()
     let buf = ''
@@ -118,7 +122,7 @@ export async function runAutomation({ agent, task, sessionId, attachOnly, signal
     const detail = await res.text().catch(() => '')
     throw new Error(`HTTP ${res.status}${detail ? ' — ' + detail.slice(0, 250) : ''}`)
   }
-  if (!res.body) throw new Error('Пустой ответ от агента')
+  if (!res.body) throw new Error('Empty response from the agent')
 
   const reader = res.body.getReader()
   const decoder = new TextDecoder()

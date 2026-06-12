@@ -7,7 +7,7 @@ import {
   ArrowLeft, Calendar, Check, ChevronRight, Cog, Cpu, Link2, Loader2, LogOut, Network, Pause, Pencil,
   Play, Plug, Send, Sparkles, Square, Terminal, Trash2, Zap,
 } from 'lucide-react'
-import { runAutomation, type AutomationLine, type AskUserPayload } from '../lib/automation'
+import { runAutomation, type AutomationLine, type AskUserPayload, type ClaudeModelId } from '../lib/automation'
 import { AskUserBlock } from '../components/AskUserBlock'
 import { JsonOrText } from '../components/JsonView'
 import { AutomationsSchedules } from '../components/AutomationsSchedules'
@@ -38,6 +38,16 @@ type Tab = 'run' | 'schedule' | 'mcp' | 'telegram'
 
 type AgentId = 'hermes' | 'claude' | 'shell'
 
+const CLAUDE_MODELS: Array<{ id: ClaudeModelId; label: string }> = [
+  { id: 'opus', label: 'Opus' },
+  { id: 'claude-fable-5', label: 'Fable' },
+  { id: 'haiku', label: 'Haiku' },
+  { id: 'sonnet', label: 'Sonnet' },
+]
+
+const DEFAULT_IMAGE_PROMPT = 'Look through the attached photos and share your conclusions.'
+const DEFAULT_ATTACHMENT_PROMPT = 'Look through the attached files and share your conclusions.'
+
 interface AgentDef {
   id: AgentId
   name: string
@@ -51,23 +61,23 @@ const AGENTS: AgentDef[] = [
   {
     id: 'hermes',
     name: 'Hermes Agent',
-    description: 'hermes -z "…" --yolo · Kimi for Coding · все MCP подключены',
+    description: 'hermes -z "…" --yolo · Kimi for Coding · all MCPs connected',
     icon: Sparkles,
-    badge: 'готов',
+    badge: 'ready',
   },
   {
     id: 'claude',
     name: 'Claude Code',
-    description: 'claude -p · Anthropic Max-подписка · все встроенные tools (Read/Edit/Bash/...)',
+    description: 'claude -p · Anthropic Max subscription · all built-in tools (Read/Edit/Bash/...)',
     icon: Cpu,
-    badge: 'готов',
+    badge: 'ready',
   },
   {
     id: 'shell',
     name: 'Shell',
-    description: 'bash -c "<command>" · быстрые системные команды без LLM',
+    description: 'bash -c "<command>" · fast system commands without an LLM',
     icon: Terminal,
-    badge: 'готов',
+    badge: 'ready',
   },
 ]
 
@@ -80,10 +90,10 @@ interface Scenario {
 }
 const SCENARIOS_LS_KEY = 'hk:automations:scenarios:v1'
 const AUTONOMY_LEVELS: Array<{ id: 'L1' | 'L2' | 'L3' | 'L4'; label: string; directive: string }> = [
-  { id: 'L1', label: 'L1·ассист', directive: 'Режим автономии L1 (ассистент): работай пошагово, СНАЧАЛА покажи короткий план и спрашивай подтверждение через [[ASK_USER]] перед каждым значимым/необратимым действием.' },
-  { id: 'L2', label: 'L2·копилот', directive: 'Режим автономии L2 (копилот): рутину делай сам, но спрашивай подтверждение через [[ASK_USER]] на рискованных или необратимых шагах.' },
-  { id: 'L3', label: 'L3·автопилот', directive: 'Режим автономии L3 (автопилот): действуй автономно, спрашивай только при реальной неоднозначности ТЗ.' },
-  { id: 'L4', label: 'L4·полная', directive: 'Режим автономии L4 (полная автономия): вопросов не задавай, прими все решения сам и доведи задачу до результата.' },
+  { id: 'L1', label: 'L1·assist', directive: 'Autonomy mode L1 (assistant): work step by step, FIRST show a short plan and ask for confirmation via [[ASK_USER]] before every significant/irreversible action.' },
+  { id: 'L2', label: 'L2·copilot', directive: 'Autonomy mode L2 (copilot): handle routine work yourself, but ask for confirmation via [[ASK_USER]] on risky or irreversible steps.' },
+  { id: 'L3', label: 'L3·autopilot', directive: 'Autonomy mode L3 (autopilot): act autonomously, ask only when the task is genuinely ambiguous.' },
+  { id: 'L4', label: 'L4·full', directive: 'Autonomy mode L4 (full autonomy): ask no questions, make every decision yourself and carry the task through to a result.' },
 ]
 const STATE_LS_KEY    = 'hk:automations:state:v1'
 
@@ -300,12 +310,24 @@ function applyAskUserExtraction(lines: AutomationLine[]): AutomationLine[] {
   return out
 }
 
+/** Claude's stream begins with bookkeeping lines (meta header, session/result
+    notes) that add noise to the run log — hide them for claude runs. */
+function isNoisyClaudeLine(line: AutomationLine): boolean {
+  if (line.kind === 'meta') return true
+  if (line.kind === 'step' && line.meta === 'note') {
+    const text = line.text.trim().toLowerCase()
+    return text.startsWith('claude session') || text.startsWith('claude result')
+  }
+  return false
+}
+
 export default function AutomationsPage() {
   const [tab, setTab] = useState<Tab>('run')
   const [agent, setAgent] = useState<AgentId>('claude')
   const [agentPickerOpen, setAgentPickerOpen] = useState(false)
   const [task, setTask] = useState('')
   const [autonomy, setAutonomy] = useState<'L1' | 'L2' | 'L3' | 'L4'>('L3')
+  const [claudeModel, setClaudeModel] = useState<ClaudeModelId>('sonnet')
   const [scenarios, setScenarios] = useState<Scenario[]>([])
   const [editScenario, setEditScenario] = useState<Scenario | null>(null)
   const agentPickerRef = useRef<HTMLDivElement>(null)
@@ -327,13 +349,13 @@ export default function AutomationsPage() {
   const [attachments, setAttachments] = useState<AttachedFile[]>([])
   /** Graph modal — shows only the current session's tree */
   const [graphOpen, setGraphOpen] = useState(false)
-  /** Brief "✓ скопировано" flash on the link-copy button */
+  /** Brief "✓ copied" flash on the link-copy button */
   const [copiedLink, setCopiedLink] = useState(false)
-  /** Свернутые группы сессий по маскотам — Set<MascotId>. Дефолт: всё
-      свернуто кроме маскота с самой свежей сессией. Persist в LS. */
+  /** Collapsed session groups by mascot — Set<MascotId>. Default: everything
+      collapsed except the mascot with the most recent session. Persisted in LS. */
   const [collapsedMascots, setCollapsedMascots] = useState<Set<string>>(new Set())
-  /** Scope сайдбара сессий: 'thisRun' (только активная сессия + её дерево)
-      или 'all' (все 32). Дефолт: thisRun если активная сессия есть. */
+  /** Sessions sidebar scope: 'thisRun' (only the active session + its tree)
+      or 'all' (all of them). Default: thisRun when there is an active session. */
   const [sidebarScope, setSidebarScope] = useState<'thisRun' | 'all'>('thisRun')
   const abortRef = useRef<AbortController | null>(null)
   const termRef = useRef<HTMLDivElement>(null)
@@ -362,7 +384,7 @@ export default function AutomationsPage() {
                   status: 'stopped' as const,
                   lines: [
                     ...r.lines,
-                    { kind: 'meta' as const, text: '⏸ страница перезагружена — стрим прерван, тяну свежую историю…' },
+                    { kind: 'meta' as const, text: '⏸ page reloaded — stream interrupted, fetching fresh history…' },
                   ],
                 }
               : r,
@@ -379,8 +401,8 @@ export default function AutomationsPage() {
                   const footer: AutomationLine = note
                     ? { kind: 'meta', text: '⚠ ' + note }
                     : processed.length === 0
-                      ? { kind: 'meta', text: '⚠ история пуста (транскрипт не найден)' }
-                      : { kind: 'meta', text: '✓ история подтянута' }
+                      ? { kind: 'meta', text: '⚠ history is empty (transcript not found)' }
+                      : { kind: 'meta', text: '✓ history loaded' }
                   setRuns((prev) => prev.map((x) =>
                     x.id === r.id
                       ? {
@@ -452,8 +474,8 @@ export default function AutomationsPage() {
         const arr = JSON.parse(raw) as string[]
         if (Array.isArray(arr)) setCollapsedMascots(new Set(arr))
       } else {
-        // Дефолт: всё свернуто. Маскот с самой свежей сессией развернётся
-        // автоматом ниже после первого рендера (см. useEffect ниже).
+        // Default: everything collapsed. The mascot with the most recent session
+        // expands automatically after the first render (see useEffect below).
       }
     } catch { /* ignore */ }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -464,11 +486,11 @@ export default function AutomationsPage() {
     catch { /* quota */ }
   }, [hydrated, collapsedMascots])
 
-  /** Дерево активной сессии (root + все BFS-потомки). Используется когда
-      sidebarScope='thisRun' — отфильтровать сайдбар до только этого run'а. */
+  /** Active session tree (root + all BFS descendants). Used when
+      sidebarScope='thisRun' to filter the sidebar down to just this run. */
   const activeRunTreeIds = useMemo(() => {
     if (!activeSessionId) return null
-    // Найти root сессии — если активная сама root, она root. Иначе climb to root.
+    // Find the session root — if the active one is a root, use it. Otherwise climb to root.
     const sessById = new Map(sessions.map((s) => [s.id, s]))
     let rootId = activeSessionId
     let safety = 10
@@ -492,24 +514,24 @@ export default function AutomationsPage() {
     return ids
   }, [sessions, activeSessionId])
 
-  // авто-переключение sidebarScope: если есть активная сессия → thisRun,
-  // ИНАЧЕ оставляем что было (не сбрасываем на 'all' автоматом — иначе после
-  // «+ Новая» опять выпадут все 32 сессии).
+  // Auto-switch sidebarScope: if there is an active session → thisRun,
+  // OTHERWISE keep it as is (don't auto-reset to 'all' — otherwise after
+  // "+ New" all the old sessions would pour back in).
   useEffect(() => {
     if (activeSessionId) setSidebarScope('thisRun')
   }, [activeSessionId])
 
-  /** Сгруппировать сессии по маскотам. С учётом sidebarScope:
-      • 'thisRun' + activeRunTreeIds   → дерево активного run'а
-      • 'thisRun' БЕЗ activeSession    → ПУСТО (свежая сессия не стартовала)
-      • 'all'                          → все сессии (классика)
+  /** Group sessions by mascot, respecting sidebarScope:
+      • 'thisRun' + activeRunTreeIds   → the active run's tree
+      • 'thisRun' WITHOUT activeSession → EMPTY (fresh session hasn't started)
+      • 'all'                          → all sessions (classic)
    */
   const { orchestratorGroups, workerGroups } = useMemo(() => {
     let scopedSessions: AgentSession[]
     if (sidebarScope === 'thisRun') {
       scopedSessions = activeRunTreeIds
         ? sessions.filter((s) => activeRunTreeIds.has(s.id))
-        : [] // нет активной — пусто (юзер только что нажал «+ Новая»)
+        : [] // no active session — empty (user just clicked "+ New")
     } else {
       scopedSessions = sessions
     }
@@ -537,17 +559,17 @@ export default function AutomationsPage() {
       workerGroups: groupByMascot(wrkSessions),
     }
   }, [sessions, sidebarScope, activeRunTreeIds])
-  /** Объединённый список для авто-разворота самой свежей группы. */
+  /** Combined list used to auto-expand the most recent group. */
   const sessionGroups = useMemo(() => [...orchestratorGroups, ...workerGroups], [orchestratorGroups, workerGroups])
 
-  /** Авто-разворот самой свежей группы при первом рендере, если ничего
-      не было в LS (т.е. дефолтное состояние). */
+  /** Auto-expand the most recent group on first render if nothing
+      was saved in LS (i.e. default state). */
   useEffect(() => {
     if (!hydrated) return
     if (sessionGroups.length === 0) return
-    if (collapsedMascots.size > 0) return // юзер уже что-то выбирал
+    if (collapsedMascots.size > 0) return // user already made a choice
     const expanded: Set<string> = new Set(ROSTER_IDENTITY.map((m) => m.id))
-    expanded.delete(sessionGroups[0].mid) // самую свежую — развернуть
+    expanded.delete(sessionGroups[0].mid) // expand the most recent one
     setCollapsedMascots(expanded)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hydrated, sessionGroups.length])
@@ -563,7 +585,7 @@ export default function AutomationsPage() {
 
   /** Pull a session's transcript from the server and drop it into the
       terminal as a synthetic, read-only "history" run. Reused by both the
-      sidebar "↪ продолжить" button AND the deep-link `?session=<id>` URL
+      sidebar "↪ continue" button AND the deep-link `?session=<id>` URL
       handler. Returns the new run id (or null on failure). */
   const loadSessionAsRun = useCallback(async (sessionId: string): Promise<string | null> => {
     // A LIVE run for this session? Just focus it — never disturb a stream.
@@ -588,8 +610,8 @@ export default function AutomationsPage() {
         agent: 'claude',
         task: `📜 ${meta?.name || sessionId}`,
         lines: [{ kind: 'error', text: gone
-          ? '⚠ Сессия прервана или удалена — её больше нет на сервере. Старое содержимое из кэша браузера очищено.'
-          : 'не удалось загрузить сессию: ' + String(e?.message || e) }],
+          ? '⚠ Session was interrupted or deleted — it no longer exists on the server. Stale content from the browser cache has been cleared.'
+          : 'failed to load session: ' + String(e?.message || e) }],
         startedAt: meta?.createdAt || Date.now(),
         status: 'failed',
         exitCode: null,
@@ -618,7 +640,7 @@ export default function AutomationsPage() {
       durationMs: meta ? Math.max(0, (meta.lastUsedAt || Date.now()) - (meta.createdAt || Date.now())) : 0,
       sessionId,
     }
-    if (interrupted) histRec.lines.push({ kind: 'meta', text: '⚠ ответ был прерван — доделываю автоматически…' })
+    if (interrupted) histRec.lines.push({ kind: 'meta', text: '⚠ the reply was interrupted — finishing it automatically…' })
     if (note) histRec.lines.unshift({ kind: 'meta', text: '⚠ ' + note })
     // Replace any stale cached run for this session with server truth.
     setRuns((prev) => [histRec, ...prev.filter((r) => r.id !== id && r.sessionId !== sessionId)].slice(0, 20))
@@ -643,17 +665,17 @@ export default function AutomationsPage() {
     const urlRun = params.get('run')
     const urlSess = params.get('session')
     const urlPrefill = params.get('prefill')
-    const urlMascot = params.get('mascot') // info-only — для будущего
+    const urlMascot = params.get('mascot') // info-only — reserved for the future
 
-    // Prefill (от /automations/squad → «позвать в автомат») — подставляем в
-    // textarea и переключаемся на claude, чтобы юзер просто нажал «Запустить».
+    // Prefill (from /automations/squad → "send to automations") — drop it into
+    // the textarea and switch to claude so the user just hits "Run".
     if (urlPrefill) {
       try {
         const text = decodeURIComponent(urlPrefill)
         setTask(text)
         setAgent('claude')
-        // не делаем new session, юзер сам решит и нажмёт запуск
-        // убираем prefill из URL чтобы при F5 не пере-подставлять
+        // don't start a new session — the user decides and hits run themselves
+        // strip prefill from the URL so F5 doesn't re-apply it
         params.delete('prefill')
         params.delete('mascot')
         const qs = params.toString()
@@ -673,7 +695,7 @@ export default function AutomationsPage() {
     if (urlSess) {
       void loadSessionAsRun(urlSess)
     }
-    // info-only: записать какой маскот выбран (для UX-логов / в будущем — badge)
+    // info-only: record which mascot was chosen (for UX logs / a future badge)
     void urlMascot
     // Only run once after hydration — subsequent URL changes are driven BY
     // us (via replaceState), so re-firing this would create loops.
@@ -710,8 +732,8 @@ export default function AutomationsPage() {
 
   const active = useMemo(() => runs.find((r) => r.id === activeRunId) ?? null, [runs, activeRunId])
 
-  /** Render одной collapsed-группы маскота (используется и для orchestrators
-      и для workers секций — DRY). */
+  /** Renders one collapsed mascot group (used for both the orchestrators
+      and the workers sections — DRY). */
   const renderGroupCard = useCallback((g: { mid: MascotId; list: AgentSession[]; latestUsed: number; hasLive: boolean }) => {
     const ident = ROSTER_IDENTITY.find((m) => m.id === g.mid)!
     const collapsed = collapsedMascots.has(g.mid)
@@ -758,31 +780,31 @@ export default function AutomationsPage() {
                   )}
                   <div className="flex items-center gap-1.5">
                     {s.parentSessionId && (
-                      <span className="text-violet-300/70 text-[10px] flex-shrink-0" title="саб-агент">↳</span>
+                      <span className="text-violet-300/70 text-[10px] flex-shrink-0" title="sub-agent">↳</span>
                     )}
                     <span className="text-[12px] text-white/90 truncate flex-1" title={s.name}>{s.name}</span>
                     <button
                       onClick={async () => {
-                        const n = prompt('Новое имя сессии:', s.name)?.trim()
+                        const n = prompt('New session name:', s.name)?.trim()
                         if (!n) return
                         await renameAgentSession(s.id, n).catch(() => {})
                         void refreshSessions()
                       }}
                       className="opacity-0 group-hover:opacity-100 text-white/35 hover:text-white transition"
-                      title="Переименовать"
+                      title="Rename"
                     >
                       <Pencil className="w-3 h-3" />
                     </button>
                     <button
                       onClick={async (e) => {
                         e.stopPropagation()
-                        if (!confirm(`Удалить сессию «${s.name}»?`)) return
+                        if (!confirm(`Delete session "${s.name}"?`)) return
                         await deleteAgentSession(s.id).catch(() => {})
                         if (activeSessionId === s.id) setActiveSessionId(null)
                         void refreshSessions()
                       }}
                       className="opacity-0 group-hover:opacity-100 text-white/35 hover:text-red-300 transition"
-                      title="Удалить"
+                      title="Delete"
                     >
                       <Trash2 className="w-3 h-3" />
                     </button>
@@ -796,7 +818,7 @@ export default function AutomationsPage() {
                         <span>·</span>
                         <span
                           className="text-emerald-300/75"
-                          title={`${((s.tokensIn || 0) + (s.tokensOut || 0)).toLocaleString('ru-RU')} токенов (in ${(s.tokensIn || 0).toLocaleString('ru-RU')} / out ${(s.tokensOut || 0).toLocaleString('ru-RU')})`}
+                          title={`${((s.tokensIn || 0) + (s.tokensOut || 0)).toLocaleString('en-US')} tokens (in ${(s.tokensIn || 0).toLocaleString('en-US')} / out ${(s.tokensOut || 0).toLocaleString('en-US')})`}
                         >
                           ${s.costUsd.toFixed(s.costUsd < 1 ? 3 : 2)}
                         </span>
@@ -807,9 +829,9 @@ export default function AutomationsPage() {
                     <button
                       onClick={() => { void joinSession(s.id) }}
                       className="mt-1 w-full px-2 py-0.5 rounded text-[10.5px] bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-200 border border-emerald-400/25 transition flex items-center justify-center gap-1"
-                      title="Подключиться к живому потоку этой сессии (она сейчас выполняется)"
+                      title="Attach to this session's live stream (it is running right now)"
                     >
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-300 animate-pulse" /> смотреть live
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-300 animate-pulse" /> watch live
                     </button>
                   )}
                   <button
@@ -822,7 +844,7 @@ export default function AutomationsPage() {
                         : 'bg-white/[0.04] hover:bg-violet-500/15 text-white/65 hover:text-violet-100')
                     }
                   >
-                    {isActiveSess ? '✓ открыто' : '↪ продолжить'}
+                    {isActiveSess ? '✓ open' : '↪ continue'}
                   </button>
                 </div>
               )
@@ -834,8 +856,8 @@ export default function AutomationsPage() {
   }, [activeSessionId, collapsedMascots, toggleMascotGroup, loadSessionAsRun, refreshSessions])
   const isRunning = active?.status === 'running'
 
-  // Live-refresh сессий пока идёт прогон — делегированные воркеры
-  // появляются в сайдбаре по одному, по мере их вызова оркестратором.
+  // Live-refresh sessions while a run is in progress — delegated workers
+  // appear in the sidebar one by one as the orchestrator calls them.
   useEffect(() => {
     if (!isRunning) return
     const tmr = setInterval(() => { void refreshSessions() }, 2500)
@@ -855,7 +877,7 @@ export default function AutomationsPage() {
       // Merge consecutive streamed text chunks into ONE line so text flows
       // as a continuous block. Claude's stream-json fires text_delta events
       // with 1-5 characters each; without this merge each chunk renders as
-      // its own <pre> block, producing the "Н\nе тро\nгаю" visual.
+      // its own <pre> block, producing the "br\noken te\nxt" visual.
       const last = r.lines[r.lines.length - 1]
       let lines: AutomationLine[]
       if (last && last.kind === 'stdout' && line.kind === 'stdout') {
@@ -973,7 +995,7 @@ export default function AutomationsPage() {
       runId = newRunId()
       const rec: RunRecord = {
         id: runId, agent: 'claude', task: `👁 live · ${meta?.name || sessionId}`,
-        lines: [{ kind: 'meta', text: 'подключаюсь к живой сессии…' }],
+        lines: [{ kind: 'meta', text: 'connecting to the live session…' }],
         startedAt: Date.now(), status: 'running', sessionId,
       }
       setRuns((prev) => [rec, ...prev.filter((r) => r.id !== runId)].slice(0, 20))
@@ -1000,7 +1022,7 @@ export default function AutomationsPage() {
       })
     } catch (e: any) {
       const stopped = e?.name === 'AbortError'
-      appendLine(rid, { kind: stopped ? 'meta' : 'error', text: stopped ? '— отключился от просмотра' : String(e?.message || e) })
+      appendLine(rid, { kind: stopped ? 'meta' : 'error', text: stopped ? '— disconnected from live view' : String(e?.message || e) })
       setRuns((prev) => prev.map((r) => (r.id === rid ? { ...r, status: 'stopped' } : r)))
     } finally {
       abortRef.current = null
@@ -1009,7 +1031,7 @@ export default function AutomationsPage() {
 
   const runTask = async (taskOverride?: string) => {
     const t = (taskOverride ?? task).trim()
-    if (!t || isRunning) return
+    if ((!t && attachments.length === 0) || isRunning) return
 
     // Continue-in-place: if there's an active Claude session AND a current run
     // tied to it (or a freshly-loaded history view), append the new turn to
@@ -1033,7 +1055,7 @@ export default function AutomationsPage() {
               status: 'running',
               startedAt: Date.now(),
               sessionId: activeSessionId,
-              lines: [...r.lines, { kind: 'meta', text: '──── новый ход ────' }],
+              lines: [...r.lines, { kind: 'meta', text: '──── new turn ────' }],
             }
           : r
       ))
@@ -1048,16 +1070,15 @@ export default function AutomationsPage() {
     }
     setTask('')
 
-    // Auto-open «Эфир» в отдельной вкладке/окне чтоб видеть live-передачу
-    // данных между маскотами в реальном времени. Окно переиспользуется
-    // через window.name='zek-ether' — повторный запуск его focus'ит, а не
-    // плодит копии. Если popup-blocker зарубил — игнорим, у юзера есть
-    // ссылка в шапке.
-    // Открываем Эфир СИНХРОННО (popup-safe — мы в обработчике клика). На СВЕЖЕМ
-    // запуске id сессии ещё неизвестен, поэтому стартуем на "pending"-фокусе →
-    // пустой граф (НЕ вся история). Когда ниже прилетит SSE-событие 'session',
-    // перенаправим это же окно на реальную сессию — и агенты будут появляться
-    // по одному, по мере делегирования. Для continue-in-place id уже известен.
+    // Auto-open "Ether" in a separate tab/window to watch data flowing between
+    // mascots in real time. The window is reused via window.name='zek-ether' —
+    // a repeat run focuses it instead of spawning copies. If the popup blocker
+    // kills it — ignore, the user has a link in the header.
+    // Open Ether SYNCHRONOUSLY (popup-safe — we're inside a click handler). On a FRESH
+    // run the session id isn't known yet, so we start on a "pending" focus →
+    // an empty graph (NOT the whole history). When the SSE 'session' event arrives
+    // below, we redirect this same window to the real session — and agents appear
+    // one by one as they get delegated. For continue-in-place the id is already known.
     let etherWin: Window | null = null
     const etherNeedsFocus = !(agent === 'claude' && activeSessionId)
     if (typeof window !== 'undefined' && agent === 'claude') {
@@ -1065,47 +1086,51 @@ export default function AutomationsPage() {
         const initialFocus = activeSessionId || '__pending__'
         etherWin = window.open(`/automations/ether?focus=${initialFocus}`, 'zek-ether')
         if (etherWin && !etherWin.closed) {
-          try { etherWin.focus() } catch { /* cross-origin focus throw — игнор */ }
+          try { etherWin.focus() } catch { /* cross-origin focus throw — ignore */ }
         }
       } catch { /* popup blocked — skip */ }
     }
 
     // Upload pasted images (if any) and prepend their paths to the prompt so
     // Claude knows where to find them — its Read tool can open image files.
+    const pendingAttachments = attachments
+    if (pendingAttachments.length > 0) setAttachments([])
+
+    // Attachments without text get a sensible default prompt.
+    const hasImageAttachments = pendingAttachments.some((a) => a.mime.startsWith('image/'))
+    const visibleTask = t || (hasImageAttachments ? DEFAULT_IMAGE_PROMPT : DEFAULT_ATTACHMENT_PROMPT)
     const autoDir = agent === 'claude' ? (AUTONOMY_LEVELS.find((a) => a.id === autonomy)?.directive || '') : ''
     let promptForAgent = autoDir ? `[${autoDir}]
 
-${t}` : t
-    const pendingAttachments = attachments
+${visibleTask}` : visibleTask
     if (pendingAttachments.length > 0 && (agent === 'claude' || agent === 'hermes')) {
-      setAttachments([])
       try {
         const uploaded = await uploadAttachments(pendingAttachments)
         const files = uploaded?.files ?? []
         if (files.length > 0) {
           const lines = files.map((f) => `- ${f.path}  (${f.name}, ${f.mime})`).join('\n')
           promptForAgent =
-            `[Прикреплены ${files.length === 1 ? 'файл' : 'файлы'} (открой через Read tool, это картинк${files.length === 1 ? 'а' : 'и'}):\n${lines}]\n\n` +
-            t
-          appendLine(id, { kind: 'prompt', text: t })
+            `[Attached ${files.length === 1 ? 'file' : 'files'} (open via the Read tool, ${files.length === 1 ? 'this is an image' : 'these are images'}):\n${lines}]\n\n` +
+            promptForAgent
+          appendLine(id, { kind: 'prompt', text: visibleTask })
           for (const f of files) {
             if (f.mime.startsWith('image/')) {
               appendLine(id, {
                 kind: 'artifact', path: f.path, name: f.name, mime: f.mime, size: f.size,
               })
             } else {
-              appendLine(id, { kind: 'meta', text: `📎 прикреплён: ${f.path}` })
+              appendLine(id, { kind: 'meta', text: `attached: ${f.path}` })
             }
           }
         } else {
-          appendLine(id, { kind: 'prompt', text: t })
+          appendLine(id, { kind: 'prompt', text: visibleTask })
         }
       } catch (e: any) {
-        appendLine(id, { kind: 'error', text: 'Не удалось загрузить прикрепления: ' + String(e?.message || e) })
-        appendLine(id, { kind: 'prompt', text: t })
+        appendLine(id, { kind: 'error', text: 'Failed to upload attachments: ' + String(e?.message || e) })
+        appendLine(id, { kind: 'prompt', text: visibleTask })
       }
     } else {
-      appendLine(id, { kind: 'prompt', text: t })
+      appendLine(id, { kind: 'prompt', text: visibleTask })
     }
 
     const ctrl = new AbortController()
@@ -1116,19 +1141,22 @@ ${t}` : t
       await runAutomation({
         agent,
         task: promptForAgent,
+        model: agent === 'claude' ? claudeModel : undefined,
         sessionId: agent === 'claude' ? activeSessionId : undefined,
         signal: ctrl.signal,
         onLine: (line) => {
-          appendLine(id, line)
+          if (!(agent === 'claude' && isNoisyClaudeLine(line))) {
+            appendLine(id, line)
+          }
           if (line.kind === 'session') {
             setRuns((prev) => prev.map((r) =>
               r.id === id ? { ...r, sessionId: line.sessionId } : r
             ))
             if (agent === 'claude') setActiveSessionId(line.sessionId)
-            // Навести окно Эфира на текущую сессию (на свежем запуске оно
-            // стартовало на пустом pending-фокусе).
+            // Point the Ether window at the current session (on a fresh run it
+            // started on an empty pending focus).
             if (etherNeedsFocus && etherWin && !etherWin.closed) {
-              try { etherWin.location.href = `/automations/ether?focus=${line.sessionId}` } catch { /* cross-origin — игнор */ }
+              try { etherWin.location.href = `/automations/ether?focus=${line.sessionId}` } catch { /* cross-origin — ignore */ }
             }
           }
           if (line.kind === 'done') {
@@ -1155,13 +1183,13 @@ ${t}` : t
       const isNetwork = !stopped && /failed to fetch|networkerror|load failed|fetch failed|network|connection/i.test(errMsg)
 
       if (isNetwork && agent === 'claude') {
-        appendLine(id, { kind: 'meta', text: `⏳ соединение с сервером оборвалось (${errMsg}) — жду рестарта до 60с…` })
+        appendLine(id, { kind: 'meta', text: `⏳ lost connection to the server (${errMsg}) — waiting up to 60s for it to come back…` })
         setRuns((prev) => prev.map((r) =>
           r.id === id ? { ...r, status: 'stopped' } : r
         ))
         const back = await waitForServer(60_000)
         if (back) {
-          appendLine(id, { kind: 'meta', text: '✓ сервер вернулся — подтягиваю историю сессии' })
+          appendLine(id, { kind: 'meta', text: '✓ server is back — fetching session history' })
           // Brief wait so Anthropic-side transcript is flushed
           await new Promise((r) => setTimeout(r, 1500))
           await refreshSessions()
@@ -1184,23 +1212,23 @@ ${t}` : t
                       durationMs: Date.now() - r.startedAt,
                       lines: [
                         ...processedHist,
-                        { kind: 'meta', text: '──── история подтянута после рестарта ────' },
-                        { kind: 'error', text: '⚠ задача НЕ завершена — Claude была убита рестартом прокси. Чтобы доделать: напиши сюда «продолжи с того места» — в той же сессии она увидит полный контекст и доработает.' },
+                        { kind: 'meta', text: '──── history restored after restart ────' },
+                        { kind: 'error', text: '⚠ task NOT finished — Claude was killed by a proxy restart. To finish it, type "continue where you left off" here — in the same session it will see the full context and complete the work.' },
                       ],
                     }
                   : r
               ))
             } catch (refetchErr: any) {
-              appendLine(id, { kind: 'error', text: 'не удалось подтянуть историю: ' + String(refetchErr?.message || refetchErr) })
+              appendLine(id, { kind: 'error', text: 'failed to load history: ' + String(refetchErr?.message || refetchErr) })
               setRuns((prev) => prev.map((r) => r.id === id ? { ...r, status: 'failed' } : r))
             }
           }
         } else {
-          appendLine(id, { kind: 'error', text: 'сервер не поднялся за 60с — попробуй ещё раз позже' })
+          appendLine(id, { kind: 'error', text: 'server did not come back within 60s — try again later' })
           setRuns((prev) => prev.map((r) => r.id === id ? { ...r, status: 'failed' } : r))
         }
       } else {
-        appendLine(id, { kind: 'error', text: stopped ? '— остановлено пользователем' : errMsg })
+        appendLine(id, { kind: 'error', text: stopped ? '— stopped by user' : errMsg })
         setRuns((prev) => prev.map((r) =>
           r.id === id
             ? { ...r, status: stopped ? 'stopped' : 'failed', durationMs: Date.now() - r.startedAt }
@@ -1221,7 +1249,7 @@ ${t}` : t
     if (autoResumedRef.current.has(sid)) { setPendingResume(null); return }
     autoResumedRef.current.add(sid)
     setPendingResume(null)
-    void runTask('Продолжи с того места, где тебя прервали — доделай задачу полностью и дай финальный ответ пользователю.')
+    void runTask('Continue from where you were interrupted — finish the task completely and give the user a final answer.')
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pendingResume, isRunning, activeSessionId])
 
@@ -1261,36 +1289,36 @@ ${t}` : t
             className="flex items-center gap-2 text-[13px] text-white/65 hover:text-white transition"
           >
             <ArrowLeft className="w-4 h-4" />
-            <span className="hidden sm:inline">К чату</span>
+            <span className="hidden sm:inline">Back to chat</span>
           </Link>
           <div className="w-px h-5 bg-white/10" />
           <Play className="w-4 h-4 text-violet-300" />
-          <h1 className="text-[14px] font-semibold text-white/95">Автоматизации</h1>
+          <h1 className="text-[14px] font-semibold text-white/95">Automations</h1>
           <span className="px-2 py-0.5 rounded bg-white/[0.04] border border-white/10 text-[10px] uppercase tracking-wider text-white/45">
             beta
           </span>
 
           <div className="ml-3 flex gap-0.5 bg-white/[0.03] border border-white/[0.06] rounded-md p-0.5">
-            {/* Эфир — единственная full-page визуализация, открывается
-                автоматом при запуске (см. runTask → window.open). */}
+            {/* Ether — the only full-page visualization; opens automatically
+                on run (see runTask → window.open). */}
             <Link
               href="/automations/ether"
               className="px-2.5 py-1 rounded text-[11.5px] transition flex items-center gap-1.5 text-amber-300 hover:text-amber-200 hover:bg-amber-500/10"
-              title="Эфир — граф диалогов между маскотами (live, real-time)"
+              title="Ether — live graph of conversations between mascots (real-time)"
             >
               <Zap className="w-3 h-3" />
-              Эфир
+              Ether
             </Link>
             <div className="w-px self-stretch bg-white/[0.06] mx-0.5" />
             {([
-              { id: 'run',      label: 'Запуск',     icon: Play },
-              { id: 'schedule', label: 'Расписание', icon: Calendar },
+              { id: 'run',      label: 'Run',      icon: Play },
+              { id: 'schedule', label: 'Schedule', icon: Calendar },
               { id: 'mcp',      label: 'MCP',        icon: Plug },
               { id: 'telegram', label: 'Telegram',   icon: Send },
             ] as const).map((t) => {
               const Icon = t.icon
               const active = tab === t.id
-              // Show a pulse on "Запуск" tab when a stream is running and
+              // Show a pulse on the "Run" tab when a stream is running and
               // user is looking at another tab — proves console didn't die.
               const showPulse = t.id === 'run' && isRunning && tab !== 'run'
               return (
@@ -1324,10 +1352,10 @@ ${t}` : t
               window.location.href = '/login'
             }}
             className="px-2.5 py-1.5 rounded-md bg-white/[0.04] hover:bg-white/[0.09] border border-white/10 text-xs text-white/70 hover:text-white transition flex items-center gap-1.5"
-            title="Выйти"
+            title="Log out"
           >
             <LogOut className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Выйти</span>
+            <span className="hidden sm:inline">Log out</span>
           </button>
         </div>
       </header>
@@ -1355,7 +1383,7 @@ ${t}` : t
         <aside className="col-span-12 lg:col-span-3 space-y-4">
           {/* Agent picker — single dropdown instead of 3 cards */}
           <section ref={agentPickerRef} className="relative">
-            <div className="text-[10px] uppercase tracking-[0.14em] text-white/40 mb-1.5 px-1">Агент</div>
+            <div className="text-[10px] uppercase tracking-[0.14em] text-white/40 mb-1.5 px-1">Agent</div>
             <button
               onClick={() => setAgentPickerOpen((o) => !o)}
               className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg border border-white/10 bg-white/[0.03] hover:bg-white/[0.06] transition"
@@ -1410,7 +1438,7 @@ ${t}` : t
           <section>
             <div className="flex items-center gap-2 mb-1.5 px-1">
               <span className="text-[10px] uppercase tracking-[0.14em] text-white/40 flex-1">
-                Сценарии · {scenarios.length}
+                Scenarios · {scenarios.length}
               </span>
               <button
                 onClick={() =>
@@ -1422,14 +1450,14 @@ ${t}` : t
                   })
                 }
                 className="text-[11px] text-violet-300/85 hover:text-violet-100 px-1.5 py-0.5 rounded hover:bg-violet-500/10 transition flex items-center gap-0.5"
-                title="Добавить сценарий"
+                title="Add scenario"
               >
-                <span className="text-[13px] leading-none">＋</span> Сценарий
+                <span className="text-[13px] leading-none">＋</span> Scenario
               </button>
             </div>
             {scenarios.length === 0 ? (
               <div className="px-3 py-3 rounded-md border border-dashed border-white/[0.08] text-[11px] text-white/40 leading-relaxed">
-                Сценарий = заготовленный промпт. Один клик подставит его в поле задачи (можно отредактировать перед запуском).
+                A scenario is a saved prompt. One click drops it into the task field (you can edit it before running).
               </div>
             ) : (
               <div className="space-y-1">
@@ -1444,7 +1472,7 @@ ${t}` : t
                     >
                       <div className="text-[12.5px] text-white/85 group-hover:text-white flex items-center gap-1.5">
                         <ChevronRight className="w-3 h-3 text-white/35" />
-                        {s.title || '(без названия)'}
+                        {s.title || '(untitled)'}
                         {s.agent && (
                           <span className="ml-auto text-[9.5px] text-white/40 px-1 py-0.5 rounded bg-white/[0.04] border border-white/[0.06]">
                             {s.agent}
@@ -1457,19 +1485,19 @@ ${t}` : t
                       <button
                         onClick={(e) => { e.stopPropagation(); setEditScenario(s) }}
                         className="p-1 rounded text-white/40 hover:text-white hover:bg-white/[0.08] transition"
-                        title="Редактировать"
+                        title="Edit"
                       >
                         <Pencil className="w-3 h-3" />
                       </button>
                       <button
                         onClick={(e) => {
                           e.stopPropagation()
-                          if (!confirm(`Удалить сценарий «${s.title || s.id}»?`)) return
+                          if (!confirm(`Delete scenario "${s.title || s.id}"?`)) return
                           const next = scenarios.filter((x) => x.id !== s.id)
                           setScenarios(next); saveScenarios(next)
                         }}
                         className="p-1 rounded text-white/40 hover:text-red-300 hover:bg-red-500/10 transition"
-                        title="Удалить"
+                        title="Delete"
                       >
                         <Trash2 className="w-3 h-3" />
                       </button>
@@ -1486,7 +1514,7 @@ ${t}` : t
           <div className="flex items-center gap-2 px-3 py-2 bg-white/[0.03] border border-white/[0.06] rounded-t-lg">
             <Terminal className="w-3.5 h-3.5 text-violet-300" />
             <span className="text-[11.5px] text-white/70">
-              {active ? `${active.agent} · ${active.task.slice(0, 60)}${active.task.length > 60 ? '…' : ''}` : 'Терминал'}
+              {active ? `${active.agent} · ${active.task.slice(0, 60)}${active.task.length > 60 ? '…' : ''}` : 'Terminal'}
             </span>
             {active && (
               <span className={
@@ -1500,26 +1528,26 @@ ${t}` : t
                   if (typeof window === 'undefined') return
                   const url = window.location.href
                   try { await navigator.clipboard.writeText(url) }
-                  catch { /* fall back: show URL in prompt */ window.prompt('Скопируй ссылку:', url) }
+                  catch { /* fall back: show URL in prompt */ window.prompt('Copy this link:', url) }
                   setCopiedLink(true)
                   setTimeout(() => setCopiedLink(false), 1600)
                 }}
                 className="text-[10.5px] text-white/55 hover:text-violet-100 px-1.5 py-0.5 rounded hover:bg-violet-500/10 transition flex items-center gap-1"
-                title="Скопировать ссылку на этот ран (можно сохранить/расшарить)"
+                title="Copy a link to this run (save or share it)"
               >
                 {copiedLink
-                  ? (<><Check className="w-3 h-3 text-emerald-300" /><span className="text-emerald-300">скопировано</span></>)
-                  : (<><Link2 className="w-3 h-3" />ссылка</>)}
+                  ? (<><Check className="w-3 h-3 text-emerald-300" /><span className="text-emerald-300">copied</span></>)
+                  : (<><Link2 className="w-3 h-3" />link</>)}
               </button>
             )}
             {active?.sessionId && (
               <button
                 onClick={() => setGraphOpen(true)}
                 className="text-[10.5px] text-violet-300/85 hover:text-violet-100 px-1.5 py-0.5 rounded hover:bg-violet-500/10 transition flex items-center gap-1"
-                title="Граф агентов этой сессии (root + все саб-агенты)"
+                title="Agent graph for this session (root + all sub-agents)"
               >
                 <Network className="w-3 h-3" />
-                граф
+                graph
               </button>
             )}
             {active?.sessionId && (
@@ -1528,21 +1556,21 @@ ${t}` : t
                   if (typeof window === 'undefined' || !active.sessionId) return
                   const url = `${window.location.origin}/share/${active.sessionId}`
                   try { await navigator.clipboard.writeText(url) }
-                  catch { window.prompt('Публичная ссылка (без логина):', url) }
+                  catch { window.prompt('Public link (no login required):', url) }
                   setCopiedLink(true)
                   setTimeout(() => setCopiedLink(false), 1600)
                 }}
                 className="text-[10.5px] text-emerald-300/85 hover:text-emerald-100 px-1.5 py-0.5 rounded hover:bg-emerald-500/10 transition flex items-center gap-1"
-                title="Публичный read-only реплей (без логина) — можно показать заказчику/донору"
+                title="Public read-only replay (no login) — share it with a client or sponsor"
               >
-                🔗 реплей
+                🔗 replay
               </button>
             )}
             {active && (
               <button
                 onClick={clearActive}
                 className="text-[10.5px] text-white/40 hover:text-white/85 transition"
-                title="Очистить вывод этого прогона"
+                title="Clear this run's output"
               >
                 clear
               </button>
@@ -1553,14 +1581,14 @@ ${t}` : t
             const fbSess = sessions.find((x) => x.id === active.sessionId)
             const cur = fbSess?.feedback
             const KINDS: Array<{ k: 'good' | 'partial' | 'broken' | 'hallucination'; label: string; rating: 'up' | 'down' }> = [
-              { k: 'good', label: '👍 хорошо', rating: 'up' },
-              { k: 'partial', label: '◑ частично', rating: 'down' },
-              { k: 'broken', label: '✗ сломано', rating: 'down' },
-              { k: 'hallucination', label: '⚠ галлюцинация', rating: 'down' },
+              { k: 'good', label: '👍 good', rating: 'up' },
+              { k: 'partial', label: '◑ partial', rating: 'down' },
+              { k: 'broken', label: '✗ broken', rating: 'down' },
+              { k: 'hallucination', label: '⚠ hallucination', rating: 'down' },
             ]
             return (
               <div className="flex items-center gap-1.5 px-3 py-1.5 bg-white/[0.02] border-x border-white/[0.06] text-[10.5px] flex-wrap">
-                <span className="text-white/40 font-mono">оценка:</span>
+                <span className="text-white/40 font-mono">rating:</span>
                 {KINDS.map(({ k, label, rating }) => (
                   <button
                     key={k}
@@ -1580,9 +1608,9 @@ ${t}` : t
                   onClick={() => active.sessionId && runJudge(active.sessionId)}
                   disabled={judgeBusy === active.sessionId}
                   className="px-1.5 py-0.5 rounded border border-violet-400/30 text-violet-200/85 hover:bg-violet-500/15 disabled:opacity-50 transition"
-                  title="Оценить результат другим ИИ (LLM-as-judge, claude -p)"
+                  title="Have another AI grade the result (LLM-as-judge, claude -p)"
                 >
-                  {judgeBusy === active.sessionId ? '⚖ оцениваю…' : '⚖ оценить ИИ'}
+                  {judgeBusy === active.sessionId ? '⚖ grading…' : '⚖ AI grade'}
                 </button>
                 {fbSess?.judge?.verdict && (
                   <span
@@ -1592,7 +1620,7 @@ ${t}` : t
                     }
                     title={fbSess.judge.reason || ''}
                   >
-                    ИИ: {fbSess.judge.score}/10 · {fbSess.judge.verdict}
+                    AI: {fbSess.judge.score}/10 · {fbSess.judge.verdict}
                   </span>
                 )}
               </div>
@@ -1608,20 +1636,23 @@ ${t}` : t
               <div className="h-full grid place-items-center text-center">
                 <div>
                   <Terminal className="w-10 h-10 text-white/15 mx-auto mb-3" />
-                  <div className="text-[13px] text-white/55 mb-1">Терминал пуст</div>
+                  <div className="text-[13px] text-white/55 mb-1">Terminal is empty</div>
                   <div className="text-[11.5px] text-white/35 max-w-[280px] mx-auto leading-relaxed">
-                    Выбери сценарий слева или напиши задачу внизу. Stdout / stderr / шаги Hermes придут сюда в реальном времени.
+                    Pick a scenario on the left or type a task below. Stdout / stderr / Hermes steps will stream here in real time.
                   </div>
                 </div>
               </div>
             ) : active.lines.length === 0 ? (
               <div className="text-white/35 flex items-center gap-2">
                 <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                ожидание вывода…
+                waiting for output…
               </div>
             ) : (
               <div className="space-y-0.5">
-                {active.lines.map((l, i) => (
+                {active.lines
+                  .map((l, i) => ({ l, i }))
+                  .filter(({ l }) => !(active.agent === 'claude' && isNoisyClaudeLine(l)))
+                  .map(({ l, i }) => (
                   l.kind === 'ask_user'
                     ? <AskUserBlock
                         key={i}
@@ -1634,7 +1665,7 @@ ${t}` : t
                 {isRunning && (
                   <div className="text-white/30 flex items-center gap-1.5 mt-2 text-[11px]">
                     <Loader2 className="w-3 h-3 animate-spin" />
-                    стрим…
+                    streaming…
                   </div>
                 )}
               </div>
@@ -1645,15 +1676,15 @@ ${t}` : t
             {/* Active session pin — shows when next run will --resume a saved Claude conversation */}
             {agent === 'claude' && activeSession && (
               <div className="px-3 pt-2.5 pb-1 border-b border-white/[0.04] flex items-center gap-2">
-                <span className="text-[10.5px] uppercase tracking-wider text-violet-300/85">↪ продолжаешь</span>
+                <span className="text-[10.5px] uppercase tracking-wider text-violet-300/85">↪ continuing</span>
                 <span className="text-[12px] text-white/85 truncate flex-1">{activeSession.name}</span>
-                <span className="text-[10.5px] text-white/40">{activeSession.turns} ход{activeSession.turns === 1 ? '' : activeSession.turns < 5 ? 'а' : 'ов'}</span>
+                <span className="text-[10.5px] text-white/40">{activeSession.turns} turn{activeSession.turns === 1 ? '' : 's'}</span>
                 <button
                   onClick={() => setActiveSessionId(null)}
                   className="text-[10.5px] text-white/40 hover:text-white/85 px-1.5 py-0.5 rounded hover:bg-white/[0.06] transition"
-                  title="Новая сессия (не resume)"
+                  title="New session (don't resume)"
                 >
-                  ✕ новая
+                  ✕ new
                 </button>
               </div>
             )}
@@ -1675,17 +1706,17 @@ ${t}` : t
                         <span className="w-7 h-7 grid place-items-center bg-white/[0.04] rounded text-[10px] text-white/45">📎</span>
                       )}
                       <span className="text-[11px] text-white/80 max-w-[160px] truncate">{a.name}</span>
-                      <span className="text-[10px] text-white/35 tabular-nums">{(a.size / 1024).toFixed(0)}КБ</span>
+                      <span className="text-[10px] text-white/35 tabular-nums">{(a.size / 1024).toFixed(0)}KB</span>
                       <button
                         onClick={() => removeAttachment(a.id)}
                         className="ml-0.5 w-4 h-4 grid place-items-center rounded text-white/40 hover:text-red-300 hover:bg-red-500/10 transition"
-                        title="Убрать"
+                        title="Remove"
                       >×</button>
                     </div>
                   )
                 })}
                 <span className="text-[10px] text-white/35 self-center ml-1">
-                  пойдут в задачу после «Запустить» — Claude прочтёт их через Read tool
+                  sent with the task when you hit "Run" — Claude will open them with the Read tool
                 </span>
               </div>
             )}
@@ -1695,10 +1726,10 @@ ${t}` : t
               onPaste={handlePaste}
               placeholder={
                 agent === 'hermes'
-                  ? 'Опиши задачу для Hermes. Enter — запуск, Shift+Enter — перенос строки.'
+                  ? 'Describe a task for Hermes. Enter to run, Shift+Enter for a new line.'
                   : agent === 'claude'
-                    ? 'Опиши задачу для Claude — может всё: править файлы в /opt, /etc, гонять bash, и т.д.'
-                    : 'Bash-команда. Пример: uptime && df -h | head -5'
+                    ? 'Describe a task for Claude — it can do anything: edit files in /opt or /etc, run bash, and more.'
+                    : 'Bash command. Example: uptime && df -h | head -5'
               }
               rows={3}
               spellCheck={false}
@@ -1711,24 +1742,34 @@ ${t}` : t
               className="w-full px-3.5 py-3 bg-transparent text-[13px] text-white/95 outline-none resize-none placeholder:text-white/30"
             />
             <div className="flex items-center gap-2 px-3 pb-3">
-              <span className="text-[10.5px] text-white/35 font-mono">
-                {agent === 'hermes'
-                  ? 'hermes -z "<task>" --yolo'
-                  : agent === 'claude'
-                    ? 'claude -p "<task>" --dangerously-skip-permissions (IS_SANDBOX=1)'
-                    : 'bash -c "<task>"'}
-              </span>
+              {agent !== 'claude' && (
+                <span className="text-[10.5px] text-white/35 font-mono">
+                  {agent === 'hermes' ? 'hermes -z "<task>" --yolo' : 'bash -c "<task>"'}
+                </span>
+              )}
               {agent === 'claude' && (
-                <select
-                  value={autonomy}
-                  onChange={(e) => setAutonomy(e.target.value as 'L1' | 'L2' | 'L3' | 'L4')}
-                  title="Уровень автономии агента"
-                  className="text-[10.5px] bg-black/30 border border-white/[0.08] rounded px-1.5 py-0.5 text-white/65 outline-none hover:border-violet-400/40 transition font-mono"
-                >
-                  {AUTONOMY_LEVELS.map((a) => (
-                    <option key={a.id} value={a.id} className="bg-[#12121a]">{a.label}</option>
-                  ))}
-                </select>
+                <>
+                  <select
+                    value={claudeModel}
+                    onChange={(e) => setClaudeModel(e.target.value as ClaudeModelId)}
+                    title="Claude model"
+                    className="shrink-0 text-[10.5px] bg-black/30 border border-white/[0.08] rounded px-1.5 py-0.5 text-white/65 outline-none hover:border-violet-400/40 transition font-mono"
+                  >
+                    {CLAUDE_MODELS.map((m) => (
+                      <option key={m.id} value={m.id} className="bg-[#12121a]">{m.label}</option>
+                    ))}
+                  </select>
+                  <select
+                    value={autonomy}
+                    onChange={(e) => setAutonomy(e.target.value as 'L1' | 'L2' | 'L3' | 'L4')}
+                    title="Agent autonomy level"
+                    className="shrink-0 text-[10.5px] bg-black/30 border border-white/[0.08] rounded px-1.5 py-0.5 text-white/65 outline-none hover:border-violet-400/40 transition font-mono"
+                  >
+                    {AUTONOMY_LEVELS.map((a) => (
+                      <option key={a.id} value={a.id} className="bg-[#12121a]">{a.label}</option>
+                    ))}
+                  </select>
+                </>
               )}
               <span className="flex-1" />
               {isRunning ? (
@@ -1737,16 +1778,16 @@ ${t}` : t
                   className="px-3 py-1.5 rounded-md text-[12px] bg-red-500/15 hover:bg-red-500/25 text-red-200 border border-red-400/25 transition flex items-center gap-1.5"
                 >
                   <Square className="w-3.5 h-3.5" />
-                  Остановить
+                  Stop
                 </button>
               ) : (
                 <button
                   onClick={() => void runTask()}
-                  disabled={!task.trim() || AGENTS.find(a => a.id === agent)?.disabled}
+                  disabled={(!task.trim() && attachments.length === 0) || AGENTS.find(a => a.id === agent)?.disabled}
                   className="px-3.5 py-1.5 rounded-md text-[12px] bg-gradient-to-b from-violet-500 to-indigo-600 text-white hover:from-violet-400 hover:to-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed transition flex items-center gap-1.5"
                 >
                   <Play className="w-3.5 h-3.5" />
-                  Запустить
+                  Run
                 </button>
               )}
             </div>
@@ -1758,9 +1799,9 @@ ${t}` : t
           <section>
             <div className="text-[10px] uppercase tracking-[0.14em] text-white/40 px-1 flex items-center gap-1.5">
               <Cpu className="w-3 h-3" />
-              Сессии Claude · {sidebarScope === 'thisRun' ? (activeRunTreeIds?.size ?? 0) : sessions.length}
+              Claude sessions · {sidebarScope === 'thisRun' ? (activeRunTreeIds?.size ?? 0) : sessions.length}
               <span className="flex-1" />
-              {/* Scope toggle — только этот run vs все. Показываем только если есть активная сессия. */}
+              {/* Scope toggle — only this run vs all. Shown only when there is an active session. */}
               {activeSessionId && activeRunTreeIds && (
                 <div className="inline-flex rounded border border-white/[0.08] bg-black/30 p-0.5 mr-1 font-mono text-[9px]">
                   <button
@@ -1771,9 +1812,9 @@ ${t}` : t
                         ? 'bg-amber-500/30 text-amber-200'
                         : 'text-white/45 hover:text-white/80')
                     }
-                    title={`Только текущий ран (${activeRunTreeIds.size} сессий)`}
+                    title={`Current run only (${activeRunTreeIds.size} sessions)`}
                   >
-                    этот
+                    this
                   </button>
                   <button
                     onClick={() => setSidebarScope('all')}
@@ -1783,9 +1824,9 @@ ${t}` : t
                         ? 'bg-violet-500/30 text-violet-200'
                         : 'text-white/45 hover:text-white/80')
                     }
-                    title={`Все сессии (${sessions.length})`}
+                    title={`All sessions (${sessions.length})`}
                   >
-                    все
+                    all
                   </button>
                 </div>
               )}
@@ -1794,19 +1835,19 @@ ${t}` : t
                   setActiveSessionId(null)
                   setActiveRunId(null)
                   setTask('')
-                  // ВАЖНО: scope='thisRun' оставляем — сайдбар станет пустым
-                  // и не покажет 32 старых сессии. Появятся только новые.
+                  // IMPORTANT: keep scope='thisRun' — the sidebar goes empty
+                  // and won't show the old sessions. Only new ones will appear.
                   setSidebarScope('thisRun')
                 }}
-                title="Новая чистая сессия (сайдбар тоже очищается)"
+                title="New clean session (sidebar clears too)"
                 className="text-[11px] text-violet-300/85 hover:text-violet-100 px-1.5 py-0.5 rounded hover:bg-violet-500/10 transition flex items-center gap-0.5"
               >
-                <span className="text-[13px] leading-none">＋</span> Новая
+                <span className="text-[13px] leading-none">＋</span> New
               </button>
             </div>
             {sessions.length === 0 ? (
               <div className="text-[11.5px] text-white/35 px-1 py-3">
-                Сохранённых нет. После первого запуска Claude появится тут — нажмёшь «↪» и продолжишь.
+                No saved sessions yet. After the first Claude run one will appear here — hit "↪" to continue it.
               </div>
             ) : sidebarScope === 'thisRun' && !activeSessionId ? (
               <div className="mt-2 p-3 rounded-md border border-dashed border-white/[0.08] bg-black/20 text-center space-y-2">
@@ -1814,38 +1855,38 @@ ${t}` : t
                   <span className="text-base font-mono">·</span>
                 </div>
                 <div className="text-[11.5px] text-white/55 leading-snug">
-                  чисто. напиши задачу слева и жми «Запустить»
+                  clean slate. type a task on the left and hit "Run"
                 </div>
                 <div className="text-[10px] text-white/30 font-mono">
-                  как только оркестратор стартанёт — появится здесь, а вместе с ним и саб-агенты по мере вызовов
+                  once the orchestrator starts it will show up here, followed by sub-agents as they get called
                 </div>
                 <button
                   onClick={() => setSidebarScope('all')}
                   className="text-[10px] text-violet-300/70 hover:text-violet-200 font-mono transition pt-1"
                 >
-                  ← всё-таки показать все ({sessions.length})
+                  ← show all anyway ({sessions.length})
                 </button>
               </div>
             ) : (
               <div className="space-y-3 mt-1.5 max-h-[60vh] overflow-y-auto pr-1">
-                {/* === ORCHESTRATORS (root-сессии) === */}
+                {/* === ORCHESTRATORS (root sessions) === */}
                 {orchestratorGroups.length > 0 && (
                   <div>
                     <div className="text-[9.5px] uppercase tracking-[0.14em] text-emerald-300/70 px-1 pb-1 flex items-center gap-1.5">
                       <span className="w-1 h-1 rounded-full bg-emerald-400" />
-                      Оркестраторы · {orchestratorGroups.reduce((a, g) => a + g.list.length, 0)}
+                      Orchestrators · {orchestratorGroups.reduce((a, g) => a + g.list.length, 0)}
                     </div>
                     <div className="space-y-1">
                       {orchestratorGroups.map((g) => renderGroupCard(g))}
                     </div>
                   </div>
                 )}
-                {/* === WORKERS (саб-агенты) === */}
+                {/* === WORKERS (sub-agents) === */}
                 {workerGroups.length > 0 && (
                   <div>
                     <div className="text-[9.5px] uppercase tracking-[0.14em] text-violet-300/70 px-1 pb-1 flex items-center gap-1.5">
                       <span className="w-1 h-1 rounded-full bg-violet-400" />
-                      Воркеры · {workerGroups.reduce((a, g) => a + g.list.length, 0)}
+                      Workers · {workerGroups.reduce((a, g) => a + g.list.length, 0)}
                     </div>
                     <div className="space-y-1">
                       {workerGroups.map((g) => renderGroupCard(g))}
@@ -1859,10 +1900,10 @@ ${t}` : t
           <section>
             <div className="text-[10px] uppercase tracking-[0.14em] text-white/40 px-1 flex items-center gap-1.5">
               <Cog className="w-3 h-3" />
-              Этот сеанс · {runs.length}
+              This tab · {runs.length}
             </div>
             {runs.length === 0 ? (
-              <div className="text-[11.5px] text-white/35 px-1 py-3">Запусков пока нет.</div>
+              <div className="text-[11.5px] text-white/35 px-1 py-3">No runs yet.</div>
             ) : (
               <div className="space-y-1 mt-1.5">
                 <AnimatePresence>
@@ -1896,7 +1937,7 @@ ${t}` : t
                           <button
                             onClick={(e) => { e.stopPropagation(); removeRun(r.id) }}
                             className="opacity-0 group-hover:opacity-100 text-white/35 hover:text-red-300 transition"
-                            title="Убрать из списка"
+                            title="Remove from list"
                           >
                             <Trash2 className="w-3 h-3" />
                           </button>
@@ -1915,7 +1956,7 @@ ${t}` : t
 
       <ImageLightbox image={lightbox} onClose={() => setLightbox(null)} />
 
-      {/* Tweaks (zek) — floating gear-кнопка в правом нижнем углу */}
+      {/* Tweaks (zek) — floating gear button in the bottom-right corner */}
       <TweaksPanel />
 
       {/* Graph modal — focused on current session's subtree */}
@@ -1933,11 +1974,11 @@ ${t}` : t
             >
               <div className="flex items-center gap-2 px-4 py-3 border-b border-white/[0.06]">
                 <Network className="w-4 h-4 text-violet-300" />
-                <div className="text-[14px] font-medium text-white/95 flex-1">Граф этой сессии</div>
+                <div className="text-[14px] font-medium text-white/95 flex-1">This session's graph</div>
                 <button
                   onClick={() => setGraphOpen(false)}
                   className="text-white/55 hover:text-white px-2.5 py-1 rounded hover:bg-white/[0.06] transition text-[12px]"
-                  title="Закрыть"
+                  title="Close"
                 >
                   ✕
                 </button>
@@ -2014,29 +2055,29 @@ function ScenarioEditor({
         <div className="flex items-center gap-2 px-4 py-3 border-b border-white/[0.06]">
           <Play className="w-4 h-4 text-violet-300" />
           <div className="text-[14px] font-medium text-white/95 flex-1">
-            {isNew ? 'Новый сценарий' : 'Редактировать сценарий'}
+            {isNew ? 'New scenario' : 'Edit scenario'}
           </div>
         </div>
         <div className="px-4 py-4 space-y-3">
           <div>
-            <div className="text-[10.5px] uppercase tracking-wider text-white/45 mb-1">Название</div>
+            <div className="text-[10.5px] uppercase tracking-wider text-white/45 mb-1">Title</div>
             <input
               autoFocus value={title} onChange={(e) => setTitle(e.target.value)}
-              placeholder="Например: Скриншот example.com"
+              placeholder="e.g. Screenshot example.com"
               className="w-full px-3 py-2 rounded-md bg-black/40 border border-white/10 text-[13px] text-white outline-none focus:border-violet-400/60 transition"
             />
           </div>
           <div>
-            <div className="text-[10.5px] uppercase tracking-wider text-white/45 mb-1">Промпт</div>
+            <div className="text-[10.5px] uppercase tracking-wider text-white/45 mb-1">Prompt</div>
             <textarea
               value={prompt} onChange={(e) => setPrompt(e.target.value)}
               rows={6} spellCheck={false}
-              placeholder="Опиши что должен сделать агент…"
+              placeholder="Describe what the agent should do…"
               className="w-full px-3 py-2 rounded-md bg-black/40 border border-white/10 text-[13px] text-white outline-none focus:border-violet-400/60 transition resize-y min-h-[120px] font-mono"
             />
           </div>
           <div>
-            <div className="text-[10.5px] uppercase tracking-wider text-white/45 mb-1">Агент (опц.)</div>
+            <div className="text-[10.5px] uppercase tracking-wider text-white/45 mb-1">Agent (optional)</div>
             <div className="flex gap-1.5">
               {(['', 'claude', 'hermes', 'shell'] as const).map((a) => (
                 <button
@@ -2049,23 +2090,23 @@ function ScenarioEditor({
                       : 'border-white/[0.08] bg-white/[0.02] text-white/55 hover:bg-white/[0.05] hover:text-white')
                   }
                 >
-                  {a === '' ? 'любой' : a}
+                  {a === '' ? 'any' : a}
                 </button>
               ))}
             </div>
             <div className="text-[10px] text-white/35 mt-1">
-              Если задан — при клике на сценарий автоматически переключит агента.
+              If set, clicking the scenario switches to this agent automatically.
             </div>
           </div>
         </div>
         <div className="flex items-center gap-2 px-4 py-3 border-t border-white/[0.06] bg-black/20">
           {!isNew && (
             <button
-              onClick={() => { if (confirm('Удалить?')) onDelete(value.id) }}
+              onClick={() => { if (confirm('Delete?')) onDelete(value.id) }}
               className="px-2.5 py-1.5 rounded-md text-[11.5px] text-red-300/85 hover:text-red-200 hover:bg-red-500/10 transition flex items-center gap-1"
             >
               <Trash2 className="w-3 h-3" />
-              Удалить
+              Delete
             </button>
           )}
           <span className="flex-1" />
@@ -2073,13 +2114,13 @@ function ScenarioEditor({
             onClick={onClose}
             className="px-3 py-1.5 rounded-md text-[12px] text-white/65 hover:text-white hover:bg-white/[0.06] transition"
           >
-            Отмена
+            Cancel
           </button>
           <button
             onClick={() =>
               onSave({
                 ...value,
-                title: title.trim() || 'Без названия',
+                title: title.trim() || 'Untitled',
                 prompt: prompt.trim(),
                 ...(agent ? { agent: agent as AgentId } : { agent: undefined }),
               })
@@ -2087,7 +2128,7 @@ function ScenarioEditor({
             disabled={!prompt.trim()}
             className="px-3.5 py-1.5 rounded-md text-[12px] bg-gradient-to-b from-violet-500 to-indigo-600 text-white hover:from-violet-400 hover:to-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed transition"
           >
-            Сохранить
+            Save
           </button>
         </div>
       </motion.div>
@@ -2101,7 +2142,7 @@ function LineView({ line, onOpenImage }: { line: AutomationLine; onOpenImage: (i
   if (line.kind === 'prompt') {
     return (
       <div className="my-2 rounded-md border border-violet-400/20 bg-violet-500/[0.06] px-3 py-2">
-        <div className="text-[10px] uppercase tracking-wider text-violet-300/85 mb-1">Запрос</div>
+        <div className="text-[10px] uppercase tracking-wider text-violet-300/85 mb-1">Prompt</div>
         <div className="text-[12.5px] text-white/95 whitespace-pre-wrap break-words selection:bg-violet-400/30">{line.text}</div>
       </div>
     )
@@ -2111,7 +2152,7 @@ function LineView({ line, onOpenImage }: { line: AutomationLine; onOpenImage: (i
   }
   if (line.kind === 'artifact') {
     const url = agentFileUrl(line.path)
-    const kb = line.size > 0 ? ` · ${(line.size / 1024).toFixed(0)} КБ` : ''
+    const kb = line.size > 0 ? ` · ${(line.size / 1024).toFixed(0)} KB` : ''
     return (
       <div className="my-2">
         <button
@@ -2119,7 +2160,7 @@ function LineView({ line, onOpenImage }: { line: AutomationLine; onOpenImage: (i
             onOpenImage({ url, name: line.name, size: line.size, layoutId: `auto-art-${line.path}` })
           }
           className="block rounded-md overflow-hidden border border-white/[0.08] bg-black/40 hover:border-violet-400/40 transition group max-w-[480px]"
-          title="Открыть в полноэкранном просмотрщике"
+          title="Open in fullscreen viewer"
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
@@ -2165,9 +2206,9 @@ function LineView({ line, onOpenImage }: { line: AutomationLine; onOpenImage: (i
     }
     if (meta === 'tool') {
       const tx = line.text || ''
-      if (/automations\/delegate/.test(tx)) { const nm = (tx.match(/"name"\s*:\s*"([^"]+)"/) || [])[1]; return <div className="text-violet-300/70 text-[11px]">→ делегирует саб-агента{nm ? ': ' + nm : ''}</div> }
-      if (/queue-next/.test(tx)) return <div className="text-violet-300/70 text-[11px]">→ ставит follow-up</div>
-      if (/127\.0\.0\.1:3001\/automations/.test(tx)) return <div className="text-violet-300/50 text-[11px]">→ внутренний запрос</div>
+      if (/automations\/delegate/.test(tx)) { const nm = (tx.match(/"name"\s*:\s*"([^"]+)"/) || [])[1]; return <div className="text-violet-300/70 text-[11px]">→ delegating sub-agent{nm ? ': ' + nm : ''}</div> }
+      if (/queue-next/.test(tx)) return <div className="text-violet-300/70 text-[11px]">→ queueing a follow-up</div>
+      if (/127\.0\.0\.1:3001\/automations/.test(tx)) return <div className="text-violet-300/50 text-[11px]">→ internal request</div>
       return <div className="text-sky-300/85 whitespace-pre-wrap break-words">→ {tx}</div>
     }
     if (meta === 'result') {
@@ -2177,15 +2218,15 @@ function LineView({ line, onOpenImage }: { line: AutomationLine; onOpenImage: (i
     }
     return <div className="text-white/70 whitespace-pre-wrap break-words">· {line.text}</div>
   }
-  // stdout (default) — расшифровываем встроенный JSON в читаемое дерево
+  // stdout (default) — render embedded JSON as a readable tree
   return <JsonOrText text={line.text} />
 }
 
 function statusLabel(s: RunRecord['status'], code?: number | null): string {
-  if (s === 'running') return 'идёт…'
+  if (s === 'running') return 'running…'
   if (s === 'done') return `ok (exit ${code ?? 0})`
-  if (s === 'failed') return `сбой (exit ${code ?? '—'})`
-  return 'остановлено'
+  if (s === 'failed') return `failed (exit ${code ?? '—'})`
+  return 'stopped'
 }
 function statusClass(s: RunRecord['status']): string {
   if (s === 'running') return 'text-violet-300 border-violet-400/30 bg-violet-500/5'

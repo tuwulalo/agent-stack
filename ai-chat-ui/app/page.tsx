@@ -40,7 +40,48 @@ import {
   uid,
 } from './lib/sessions'
 import { agentFileUrl, DEFAULT_MODEL, DEFAULT_SYSTEM_PROMPT, HERMES_DASHBOARD, MODELS } from './lib/config'
-import { Brain, ExternalLink, FileText, LogOut, Menu, Paperclip, Play, RotateCcw, Sparkles, Terminal, Zap } from 'lucide-react'
+import { Brain, ExternalLink, FileText, LogOut, Menu, Paperclip, Play, RotateCcw, Sparkles, Terminal, Youtube, Zap } from 'lucide-react'
+
+// Claude's vision pipeline handles at most 5 images per message — bigger
+// drops get split into sequential turns, with a "hold on" prompt for all
+// but the last batch.
+const CLAUDE_IMAGE_BATCH_LIMIT = 5
+const MORE_IMAGES_PROMPT = "I sent 5 photos, more are coming — don't do anything yet."
+const DEFAULT_ATTACHMENT_PROMPT = 'Look through the attached files and share your conclusions.'
+const DEFAULT_IMAGE_PROMPT = 'Look through the attached photos and share your conclusions.'
+
+function splitAttachmentsForClaudeLimit(attachments: AttachedFile[]): AttachedFile[][] {
+  const images = attachments.filter((a) => a.mime.startsWith('image/'))
+  if (images.length <= CLAUDE_IMAGE_BATCH_LIMIT) return [attachments]
+
+  const nonImages = attachments.filter((a) => !a.mime.startsWith('image/'))
+  const batches: AttachedFile[][] = []
+  for (let i = 0; i < images.length; i += CLAUDE_IMAGE_BATCH_LIMIT) {
+    const imageBatch = images.slice(i, i + CLAUDE_IMAGE_BATCH_LIMIT)
+    const isLast = i + CLAUDE_IMAGE_BATCH_LIMIT >= images.length
+    batches.push(isLast ? [...imageBatch, ...nonImages] : imageBatch)
+  }
+  return batches
+}
+
+// Per-attachment metadata for the user bubble — embed image thumbnails as
+// data URLs (small enough to survive in localStorage).
+async function buildUserAttachments(atts: AttachedFile[]): Promise<UserAttachment[]> {
+  return Promise.all(
+    atts.map(async (a) => {
+      const isImage = a.mime.startsWith('image/')
+      let dataUrl: string | undefined
+      if (isImage && a.size <= INLINE_IMAGE_BYTES_CAP) {
+        try {
+          dataUrl = await fileToDataUrl(a.raw)
+        } catch {
+          /* keep undefined -> falls back to chip */
+        }
+      }
+      return { name: a.name, size: a.size, mime: a.mime, isImage, dataUrl }
+    }),
+  )
+}
 import Link from 'next/link'
 
 function ElapsedBadge({ since }: { since: number }) {
@@ -78,9 +119,9 @@ function MessageBubble({
       {isUser ? (
         <div
           className="flex-shrink-0 w-8 h-8 rounded-lg grid place-items-center text-[11px] font-semibold tracking-tight bg-white/[0.06] border border-white/10 text-white/80"
-          title="Вы"
+          title="You"
         >
-          Вы
+          You
         </div>
       ) : fromAgent ? (
         <div
@@ -110,7 +151,7 @@ function MessageBubble({
         {!isUser && fromAgent && (
           <div className="flex items-center gap-1.5 mb-2 text-[10.5px] uppercase tracking-[0.12em] text-violet-300/80">
             <Terminal className="w-3 h-3" />
-            <span>Hermes · автономно</span>
+            <span>Hermes · autonomous</span>
             {streaming && <ElapsedBadge since={m.createdAt} />}
             {typeof m.exitCode === 'number' && m.exitCode !== 0 && (
               <span className="ml-1 px-1.5 rounded bg-red-500/15 text-red-300">
@@ -153,7 +194,7 @@ function MessageBubble({
                           })
                         }
                         className="group relative block rounded-lg overflow-hidden border border-black/10 bg-black/5 hover:border-violet-500/50 transition cursor-zoom-in p-0 text-left"
-                        title={`${a.name} · ${(a.size / 1024).toFixed(1)} KB · клик — открыть`}
+                        title={`${a.name} · ${(a.size / 1024).toFixed(1)} KB · click to open`}
                       >
                         {/* eslint-disable-next-line @next/next/no-img-element, jsx-a11y/alt-text */}
                         <motion.img
@@ -205,9 +246,9 @@ function MessageBubble({
             <span className="text-[12px]">
               {fromAgent
                 ? hasSteps
-                  ? 'Hermes собирает финальный ответ…'
-                  : 'Запускаю Hermes…'
-                : 'Kimi думает…'}
+                  ? 'Hermes is putting together the final answer…'
+                  : 'Starting Hermes…'
+                : 'Kimi is thinking…'}
             </span>
           </div>
         ) : (
@@ -239,7 +280,7 @@ function MessageBubble({
                   })
                 }
                 className="group relative block rounded-lg overflow-hidden border border-white/10 bg-[#05050a] hover:border-violet-400/40 transition shadow-md shadow-black/40 cursor-zoom-in p-0 text-left"
-                title={`${a.name} · ${(a.size / 1024).toFixed(1)} KB · клик — открыть`}
+                title={`${a.name} · ${(a.size / 1024).toFixed(1)} KB · click to open`}
               >
                 {/* eslint-disable-next-line @next/next/no-img-element, jsx-a11y/alt-text */}
                 <motion.img
@@ -269,7 +310,7 @@ function MessageBubble({
         {!isUser && m.stderr && m.stderr.trim().length > 0 && (
           <details className="mt-3 text-[12px] text-white/55">
             <summary className="cursor-pointer select-none hover:text-white/80">
-              stderr ({m.stderr.length} симв.)
+              stderr ({m.stderr.length} chars)
             </summary>
             <pre className="mt-2 whitespace-pre-wrap break-words bg-black/40 border border-white/10 rounded-md p-2 text-[11.5px] font-mono text-red-200/80 max-h-64 overflow-auto">
               {m.stderr}
@@ -295,7 +336,7 @@ export default function Page() {
   const [notesRefresh, setNotesRefresh] = useState(0)
   /** Controlled state for the memory sidebar (trigger lives in the top-right cluster). */
   const [notesOpen, setNotesOpen] = useState(false)
-  /** Notes count for the badge on the "Память" button. Updated when the panel refreshes. */
+  /** Notes count for the badge on the "Memory" button. Updated when the panel refreshes. */
   const [notesCount, setNotesCount] = useState<number>(0)
   const abortRef = useRef<AbortController | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -448,7 +489,7 @@ export default function Page() {
   const onResetCurrent = () => {
     if (!session) return
     if (isStreaming) abortRef.current?.abort()
-    updateSession(session.id, { messages: [], title: 'Новый чат' })
+    updateSession(session.id, { messages: [], title: 'New chat' })
     setInput('')
     setAttachments([])
   }
@@ -606,7 +647,7 @@ export default function Page() {
           updateMessages(sid, (msgs) =>
             msgs.map((m) =>
               m.id === aMsgId
-                ? { ...m, content: m.content + `\n\n**Ошибка:** ${e.message}` }
+                ? { ...m, content: m.content + `\n\n**Error:** ${e.message}` }
                 : m,
             ),
           )
@@ -615,7 +656,7 @@ export default function Page() {
 
     // Retry on network drop (e.g. proxy restart): wait for /health, then ask
     // the model to continue from where it left off. Stops after 2 attempts.
-    const WAITING_MARK = '\n\n_⏳ соединение оборвалось — жду пока прокси вернётся…_'
+    const WAITING_MARK = '\n\n_⏳ connection dropped — waiting for the proxy to come back…_'
     while (true) {
       attempt++
       try {
@@ -650,11 +691,11 @@ export default function Page() {
         currentContext = [
           ...context,
           { role: 'user', content: promptForApi },
-          { role: 'assistant', content: assistantBuf.trim() || '(пустой ответ)' },
+          { role: 'assistant', content: assistantBuf.trim() || '(empty response)' },
         ]
         currentPrompt =
-          'Продолжи свой предыдущий ответ ровно с того места, где остановился. ' +
-          'Не повторяй уже сказанное, не извиняйся, не комментируй обрыв.'
+          'Continue your previous answer from exactly where you left off. ' +
+          'Do not repeat what was already said, do not apologize, do not comment on the interruption.'
       }
     }
   }
@@ -737,7 +778,7 @@ export default function Page() {
           updateMessages(sid, (msgs) =>
             msgs.map((m) =>
               m.id === aMsgId
-                ? { ...m, content: m.content + `\n\n**Ошибка запуска:** ${e.message}` }
+                ? { ...m, content: m.content + `\n\n**Startup error:** ${e.message}` }
                 : m,
             ),
           )
@@ -749,7 +790,7 @@ export default function Page() {
                     ...m,
                     content:
                       m.content +
-                      `\n\n> ⚠️ **Цикл прерван** — агент повторил \`${e.tool}\` ${e.count} раз подряд. ${e.message}`,
+                      `\n\n> ⚠️ **Loop interrupted** — the agent repeated \`${e.tool}\` ${e.count} times in a row. ${e.message}`,
                   }
                 : m,
             ),
@@ -763,7 +804,7 @@ export default function Page() {
                     exitCode: e.code,
                     content:
                       m.content.trim().length === 0 && e.code !== 0
-                        ? `_(агент завершился с кодом ${e.code}${e.signal ? ' / ' + e.signal : ''})_`
+                        ? `_(agent exited with code ${e.code}${e.signal ? ' / ' + e.signal : ''})_`
                         : m.content,
                   }
                 : m,
@@ -783,99 +824,93 @@ export default function Page() {
     const atts = attachments
     setAttachments([])
 
-    // build per-attachment metadata for the user bubble — embed image
-    // thumbnails as data URLs (small enough to survive in localStorage)
-    const userAttachments: UserAttachment[] = await Promise.all(
-      atts.map(async (a) => {
-        const isImage = a.mime.startsWith('image/')
-        let dataUrl: string | undefined
-        if (isImage && a.size <= INLINE_IMAGE_BYTES_CAP) {
-          try {
-            dataUrl = await fileToDataUrl(a.raw)
-          } catch {
-            /* keep undefined → falls back to chip */
-          }
-        }
-        return { name: a.name, size: a.size, mime: a.mime, isImage, dataUrl }
-      }),
-    )
-
-    const userMsg: SessionMessage = {
-      id: uid(),
-      role: 'user',
-      content: text,
-      createdAt: Date.now(),
-      ...(userAttachments.length > 0 ? { userAttachments } : {}),
-    }
-    const aMsg: SessionMessage = {
-      id: uid(),
-      role: 'assistant',
-      content: '',
-      createdAt: Date.now(),
-      via: mode === 'agent' ? 'agent' : 'kimi',
-    }
     const isFirst = session.messages.length === 0
     const prevMessages = session.messages
-    updateSession(sid, (s) => ({
-      ...s,
-      title: isFirst ? deriveTitle(text || atts[0]?.name || 'Файл') : s.title,
-      messages: [...s.messages, userMsg, aMsg],
-    }))
+    const batches = splitAttachmentsForClaudeLimit(atts)
 
     const ctrl = new AbortController()
     abortRef.current = ctrl
     setIsStreaming(true)
 
     try {
-      let promptForApi = text
-      // attachments make sense for agent + auto (auto routes to hermes when files present)
-      if (atts.length > 0) {
-        if (mode === 'agent' || mode === 'auto') {
-          const images = atts.filter((a) => a.mime.startsWith('image/'))
-          const [uploaded, descs] = await Promise.all([
-            uploadAttachments(atts, ctrl.signal).catch((err) => {
-              throw new Error(`Не удалось загрузить файлы: ${err?.message || err}`)
-            }),
-            images.length > 0
-              ? describeImages(images, ctrl.signal).catch(() => [])
-              : Promise.resolve([] as string[]),
-          ])
-          promptForApi =
-            buildAgentPrefix(atts, uploaded, descs) +
-            (text || 'Изучи прикреплённые файлы и сделай выводы.')
-        } else {
-          promptForApi =
-            buildChatPrefix(atts) +
-            (text || 'Изучи прикреплённые файлы и опиши что внутри.')
-        }
-      }
-
-      const ctxTurns: AgentContextTurn[] = []
+      const runningContext: AgentContextTurn[] = []
+      let runningChatMessages = prevMessages
       for (const m of prevMessages) {
         if (m.role !== 'user' && m.role !== 'assistant') continue
         const content = (m.content || '').trim()
         if (!content) continue
-        ctxTurns.push({ role: m.role, content })
+        runningContext.push({ role: m.role, content })
       }
-      const ctxSlice = ctxTurns.slice(-12)
 
-      if (mode === 'auto') {
-        await sendAuto(sid, aMsg.id, promptForApi, ctxSlice, session?.agentId ?? null, ctrl)
-      } else if (mode === 'agent') {
-        await sendAgent(sid, aMsg.id, promptForApi, ctxSlice, ctrl)
-      } else {
-        await sendChat(sid, prevMessages, aMsg.id, promptForApi, atts, ctrl)
+      for (let i = 0; i < batches.length; i++) {
+        const batch = batches[i]
+        const isLastBatch = i === batches.length - 1
+        const visibleText = isLastBatch
+          ? (text || (batch.some((a) => a.mime.startsWith('image/')) ? DEFAULT_IMAGE_PROMPT : DEFAULT_ATTACHMENT_PROMPT))
+          : MORE_IMAGES_PROMPT
+        const userAttachments = await buildUserAttachments(batch)
+        const userMsg: SessionMessage = {
+          id: uid(),
+          role: 'user',
+          content: visibleText,
+          createdAt: Date.now(),
+          ...(userAttachments.length > 0 ? { userAttachments } : {}),
+        }
+        const aMsg: SessionMessage = {
+          id: uid(),
+          role: 'assistant',
+          content: '',
+          createdAt: Date.now(),
+          via: mode === 'agent' ? 'agent' : 'kimi',
+        }
+
+        updateSession(sid, (s) => ({
+          ...s,
+          title: isFirst && i === 0 ? deriveTitle(text || batch[0]?.name || 'File') : s.title,
+          messages: [...s.messages, userMsg, aMsg],
+        }))
+
+        let promptForApi = visibleText
+        // attachments make sense for agent + auto (auto routes to hermes when files present)
+        if (batch.length > 0) {
+          if (mode === 'agent' || mode === 'auto') {
+            const images = batch.filter((a) => a.mime.startsWith('image/'))
+            const [uploaded, descs] = await Promise.all([
+              uploadAttachments(batch, ctrl.signal).catch((err) => {
+                throw new Error(`Failed to upload files: ${err?.message || err}`)
+              }),
+              images.length > 0
+                ? describeImages(images, ctrl.signal).catch(() => [])
+                : Promise.resolve([] as string[]),
+            ])
+            promptForApi = buildAgentPrefix(batch, uploaded, descs) + visibleText
+          } else {
+            promptForApi = buildChatPrefix(batch) + visibleText
+          }
+        }
+
+        const ctxSlice = runningContext.slice(-12)
+        if (mode === 'auto') {
+          await sendAuto(sid, aMsg.id, promptForApi, ctxSlice, session?.agentId ?? null, ctrl)
+        } else if (mode === 'agent') {
+          await sendAgent(sid, aMsg.id, promptForApi, ctxSlice, ctrl)
+        } else {
+          await sendChat(sid, runningChatMessages, aMsg.id, promptForApi, batch, ctrl)
+        }
+        runningContext.push({ role: 'user', content: promptForApi })
+        runningChatMessages = [...runningChatMessages, userMsg]
       }
     } catch (e: any) {
       const tail =
         e?.name === 'AbortError'
-          ? '\n\n_— остановлено пользователем_'
-          : `\n\n**Ошибка:** \`${String(e?.message || e)}\``
-      updateMessages(sid, (msgs) =>
-        msgs.map((m) =>
-          m.id === aMsg.id ? { ...m, content: m.content + tail } : m,
-        ),
-      )
+          ? '\n\n_— stopped by the user_'
+          : `\n\n**Error:** \`${String(e?.message || e)}\``
+      updateMessages(sid, (msgs) => {
+        const lastEmptyAssistant = [...msgs].reverse().find((m) => m.role === 'assistant' && m.content === '')
+        return msgs.map((m) =>
+          m.id === lastEmptyAssistant?.id ? { ...m, content: m.content + tail } : m,
+        )
+      })
     } finally {
       // Keep the Stop button visible for ~1.5s after the final `done` to cover
       // brief lulls between orchestrator phases (planner pause, synthesis kick,
@@ -909,7 +944,7 @@ export default function Page() {
       <button
         onClick={() => setSidebarOpen(true)}
         className="fixed top-4 left-5 z-30 flex items-center gap-2.5 select-none rounded-lg pr-3 py-1.5 -ml-1.5 pl-1.5 hover:bg-white/[0.04] transition group"
-        title="Сессии"
+        title="Sessions"
       >
         <div className="relative w-9 h-9 rounded-lg grid place-items-center bg-white/[0.04] border border-white/10 overflow-hidden shadow-md shadow-violet-500/15">
           <KimiMascot size={28} />
@@ -922,7 +957,7 @@ export default function Page() {
             Hermes × Kimi
           </span>
           <span className="text-[10px] uppercase tracking-[0.12em] text-white/40">
-            {sessions.length} сесси{sessions.length === 1 ? 'я' : sessions.length < 5 ? 'и' : 'й'}
+            {sessions.length} session{sessions.length === 1 ? '' : 's'}
           </span>
         </div>
       </button>
@@ -933,10 +968,10 @@ export default function Page() {
           <button
             onClick={() => setNotesOpen(true)}
             className="px-2.5 py-1.5 rounded-md bg-white/[0.04] hover:bg-white/[0.09] border border-white/10 text-xs text-white/70 hover:text-white transition flex items-center gap-1.5"
-            title="Память чата (MD-файлы)"
+            title="Chat memory (MD files)"
           >
             <Brain className="w-3.5 h-3.5 text-violet-300" />
-            <span className="hidden sm:inline">Память</span>
+            <span className="hidden sm:inline">Memory</span>
             {notesCount > 0 && (
               <span className="px-1 py-0 rounded bg-white/10 text-[10px] tabular-nums leading-4">
                 {notesCount}
@@ -948,19 +983,27 @@ export default function Page() {
           <button
             onClick={onResetCurrent}
             className="px-2.5 py-1.5 rounded-md bg-white/[0.04] hover:bg-white/[0.09] border border-white/10 text-xs text-white/70 hover:text-white transition flex items-center gap-1.5"
-            title="Очистить эту сессию"
+            title="Clear this session"
           >
             <RotateCcw className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Очистить</span>
+            <span className="hidden sm:inline">Clear</span>
           </button>
         )}
         <Link
           href="/automations"
           className="px-2.5 py-1.5 rounded-md bg-white/[0.04] hover:bg-white/[0.09] border border-white/10 text-xs text-white/70 hover:text-white transition flex items-center gap-1.5"
-          title="Автоматизации — CLI-агенты, задачи, расписание"
+          title="Automations — agents, tasks, schedule"
         >
           <Play className="w-3.5 h-3.5 text-violet-300" />
-          <span className="hidden sm:inline">Автоматизации</span>
+          <span className="hidden sm:inline">Automations</span>
+        </Link>
+        <Link
+          href="/media"
+          className="px-2.5 py-1.5 rounded-md bg-white/[0.04] hover:bg-white/[0.09] border border-white/10 text-xs text-white/70 hover:text-white transition flex items-center gap-1.5"
+          title="Media Studio — YouTube ideas, scripts, thumbnails"
+        >
+          <Youtube className="w-3.5 h-3.5 text-red-400" />
+          <span className="hidden sm:inline">Media</span>
         </Link>
         <button
           onClick={async () => {
@@ -968,10 +1011,10 @@ export default function Page() {
             window.location.href = '/login'
           }}
           className="px-2.5 py-1.5 rounded-md bg-white/[0.04] hover:bg-white/[0.09] border border-white/10 text-xs text-white/70 hover:text-white transition flex items-center gap-1.5"
-          title="Выйти"
+          title="Log out"
         >
           <LogOut className="w-3.5 h-3.5" />
-          <span className="hidden sm:inline">Выйти</span>
+          <span className="hidden sm:inline">Log out</span>
         </button>
       </div>
 
@@ -1046,7 +1089,7 @@ export default function Page() {
         hermesUrl={HERMES_DASHBOARD}
       />
 
-      {/* Per-chat MD memory panel — sidebar opens when the "Память" button is clicked */}
+      {/* Per-chat MD memory panel — sidebar opens when the "Memory" button is clicked */}
       <ChatNotesPanel
         chatId={activeId}
         open={notesOpen}
@@ -1054,7 +1097,7 @@ export default function Page() {
         refreshKey={notesRefresh}
         lastExchange={(() => {
           // Last user/assistant pair in current session — used by the
-          // "Регенерить" button to ask Kimi for a fresh digest pass.
+          // "Regenerate" button to ask Kimi for a fresh digest pass.
           const all = (session?.messages ?? []).filter(
             (m) => m.role === 'user' || m.role === 'assistant',
           )

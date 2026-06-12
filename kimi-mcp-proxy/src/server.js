@@ -81,12 +81,12 @@ function requiresAuth(req, res, next) {
   const authorization = req.get('authorization') || '';
   const token = authorization.startsWith('Bearer ') ? authorization.slice(7) : '';
 
-  // 1) Shared static key — для серверных интеграций.
+  // 1) Shared static key — for server-side integrations.
   if (token && token === config.proxyApiKey) {
     return next();
   }
 
-  // 2) JWT, выданный device-flow'ом — для CLI на компах пользователей.
+  // 2) JWT issued via the device flow — for CLIs on users' machines.
   if (token && process.env.JWT_SECRET) {
     const payload = verifyJwt(token);
     if (payload && payload.kind === 'device') {
@@ -102,7 +102,7 @@ app.get('/health', (req, res) => {
   res.json({ ok: true, model: config.kimiModel });
 });
 
-// OAuth 2.0 Device Authorization Grant — для входа CLI на компе пользователя.
+// OAuth 2.0 Device Authorization Grant — for CLI login on the user's machine.
 registerAuthDeviceRoutes(app);
 
 app.get('/v1/models', requiresAuth, (req, res) => {
@@ -166,7 +166,7 @@ const upload = multer({
     filename: (_req, file, cb) => {
       const safe = file.originalname
         .replace(/[/\\]+/g, '_')
-        .replace(/[^A-Za-z0-9._\-+ а-яА-ЯёЁ()]/g, '_')
+        .replace(/[^A-Za-z0-9._\-+ \u0430-\u044f\u0410-\u042f\u0451\u0401()]/g, '_')   // keep Latin + Cyrillic letters
         .slice(0, 180) || 'upload';
       cb(null, safe);
     },
@@ -444,6 +444,9 @@ app.post('/automations/run-stream', requiresAuth, (req, res) => {
   let task = typeof req.body?.task === 'string' ? req.body.task : '';
   const sessionId = typeof req.body?.sessionId === 'string' ? req.body.sessionId : null;
   const attachOnly = req.body?.attachOnly === true; // live-join: only attach to a running session, never spawn
+  const claudeModelInput = typeof req.body?.model === 'string' ? req.body.model : req.body?.claudeModel;
+  const claudeModelRaw = typeof claudeModelInput === 'string' ? claudeModelInput.trim().toLowerCase() : '';
+  const claudeModel = ['opus', 'claude-fable-5', 'haiku', 'sonnet'].includes(claudeModelRaw) ? claudeModelRaw : '';
   if (!['claude', 'shell'].includes(agent)) {
     return res.status(400).json({ error: { message: 'agent must be claude or shell' } });
   }
@@ -464,8 +467,8 @@ app.post('/automations/run-stream', requiresAuth, (req, res) => {
     }
   }
 
-  // ── Recovery boost: if this is a resume on a session whose сhildren
-  // finished but the parent didn't aggregate yet (e.g. parent was SIGKILL'нут
+  // ── Recovery boost: if this is a resume on a session whose children
+  // finished but the parent didn't aggregate yet (e.g. parent got SIGKILL'ed
   // mid-delegate), prepend their summaries to the task so Claude has context
   // without having to manually `curl /automations/sessions`.
   if (agent === 'claude' && session && (session.turns || 0) > 0) {
@@ -493,7 +496,7 @@ app.post('/automations/run-stream', requiresAuth, (req, res) => {
 
   if (agent === 'claude' && session && runningSessions.has(session.claudeSessionId)) {
     sse({ type: 'session', sessionId: session.id, claudeSessionId: session.claudeSessionId, turns: session.turns || 0 });
-    sse({ type: 'meta', text: '\u21a9 ход не прерывался на сервере — переподключаюсь' });
+    sse({ type: 'meta', text: '\u21a9 the turn was never interrupted on the server — reconnecting' });
     const projDir = path.join(process.env.HOME || '/root', '.claude', 'projects');
     const findT = () => { try { for (const sub of fs.readdirSync(projDir)) { const c = path.join(projDir, sub, session.claudeSessionId + '.jsonl'); if (fs.existsSync(c)) return c; } } catch (e) {} return null; };
     let emitted = 0;
@@ -529,7 +532,7 @@ app.post('/automations/run-stream', requiresAuth, (req, res) => {
   // a new turn; just tell the client it already finished.
   if (attachOnly) {
     if (session) sse({ type: 'session', sessionId: session.id, claudeSessionId: session.claudeSessionId, turns: session.turns || 0 });
-    sse({ type: 'meta', text: '✓ сессия уже завершена — подключаться не к чему' });
+    sse({ type: 'meta', text: '✓ session already finished — nothing to attach to' });
     sse({ type: 'done', code: 0, signal: null, killedByClient: false, killedByTimeout: false, ms: Date.now() - startedAt, at: Date.now() });
     if (!res.writableEnded) res.end();
     return;
@@ -546,11 +549,13 @@ app.post('/automations/run-stream', requiresAuth, (req, res) => {
       const sessionFlag = (session.turns || 0) > 0
         ? ['--resume', session.claudeSessionId]
         : ['--session-id', session.claudeSessionId];
+      const modelFlag = claudeModel ? ['--model', claudeModel] : [];
       child = spawn(
         process.env.CLAUDE_BIN || 'claude',
         [
           '-p', task,
           ...sessionFlag,
+          ...modelFlag,
           '--append-system-prompt', PUBLISH_HINT,
           '--output-format', 'stream-json',
           '--include-partial-messages',
@@ -602,11 +607,11 @@ app.post('/automations/run-stream', requiresAuth, (req, res) => {
   // (Using req.on('close') here would fire as soon as the request body is
   // fully read, which on Node 18+/Express 5 is immediate for our POST.)
   res.on('close', () => {
-    // Клиент отвалился (напр. перезагрузка страницы) до завершения. НЕ убиваем
-    // child — пусть доработает в фоне, чтобы работа не потерялась; stdout
-    // продолжаем парсить и в child.on('close') сохраняем транскрипт/summary.
-    // TIMEOUT ниже остаётся жёсткой страховкой. На реконнекте UI подтянет
-    // уже готовую историю вместо резюма прерванного хода.
+    // The client dropped (e.g. page reload) before completion. Do NOT kill the
+    // child — let it finish in the background so the work isn't lost; we keep
+    // parsing stdout and save the transcript/summary in child.on('close').
+    // The TIMEOUT below remains the hard safety net. On reconnect the UI pulls
+    // the already-finished history instead of resuming an interrupted turn.
     if (!res.writableEnded && child.exitCode == null) {
       clientGone = true;
     }
@@ -680,7 +685,7 @@ app.post('/automations/run-stream', requiresAuth, (req, res) => {
 app.get('/automations/telegram', requiresAuth, (req, res) => {
   let st = {};
   try { st = getTelegramState() || {}; } catch { st = {}; }
-  const names = { agent: 'Агент (TG)', zavod: 'Завод 2 УИ (TG)', apka: 'Апка (TG)' };
+  const names = { agent: 'Agent (TG)', zavod: 'Zavod 2 UI (TG)', apka: 'Apka (TG)' };
   const threads = Object.keys(names).map((key) => {
     const sid = st.threads && st.threads[key];
     const sess = sid ? getAgentSession(sid) : null;
@@ -770,15 +775,15 @@ app.post('/automations/sessions/:id/judge', requiresAuth, (req, res) => {
   if (!answer) return res.status(400).json({ error: { message: 'no output to judge yet' } });
 
   const judgePrompt = [
-    'Ты — строгий и честный оценщик результата AI-агента. Ниже ЗАПРОС пользователя и ОТВЕТ агента.',
-    'Оцени ОТВЕТ: полнота, точность, выполняет ли запрос, нет ли выдумок/галлюцинаций.',
-    'Верни ТОЛЬКО один JSON-объект, без markdown и любых пояснений вокруг:',
-    '{"score": <число 0-10>, "verdict": "good|partial|broken|hallucination", "reason": "<1-2 фразы по-русски>"}',
+    'You are a strict and honest evaluator of an AI agent\'s result. Below are the user\'s REQUEST and the agent\'s ANSWER.',
+    'Evaluate the ANSWER: completeness, accuracy, whether it fulfils the request, and whether it contains fabrications/hallucinations.',
+    'Return ONLY a single JSON object, with no markdown and no surrounding explanations:',
+    '{"score": <number 0-10>, "verdict": "good|partial|broken|hallucination", "reason": "<1-2 sentences in the user\'s language>"}',
     '',
-    '=== ЗАПРОС ===',
+    '=== REQUEST ===',
     String(s.lastPrompt || '').slice(0, 4000),
     '',
-    '=== ОТВЕТ АГЕНТА ===',
+    '=== AGENT ANSWER ===',
     answer.slice(0, 12000),
   ].join(String.fromCharCode(10));
 
@@ -1148,7 +1153,7 @@ function drainPendingFollowups() {
 /**
  * Replay a Claude session's stored transcript as the same AutomationLine
  * events the live SSE stream emits — used by the UI to pre-fill the
- * terminal when the user clicks "↪ продолжить" on a session card.
+ * terminal when the user clicks "↪ continue" on a session card.
  */
 app.get('/automations/sessions/:id/history', requiresAuth, async (req, res) => {
   const s = getAgentSession(req.params.id);
@@ -1437,15 +1442,18 @@ app.post('/automations/mcps/:id/restart', requiresAuth, async (req, res) => {
 // Strong signals that the user wants real shell/file/agent work on the VPS.
 const NEEDS_HERMES_RE = new RegExp(
   [
-    // Russian — actions
-    'запусти', 'выполни', 'установи', 'поставь', 'скачай', 'загрузи', 'сохрани файл',
-    'создай файл', 'создать файл', 'напиши файл', 'запиши в файл', 'измени файл',
-    'отредактируй', 'удали файл', 'найди файл', 'прочитай файл', 'покажи содержимое',
-    'сделай скриншот', 'скрин\\s+(сайт|страниц)', 'открой\\s+http', 'зайди\\s+на',
-    'спарси', 'парсинг', 'найди\\s+в\\s+интернете', 'поищи\\s+в\\s+(вебе|сети|интернете)',
-    'на\\s+сервере', 'в\\s+терминале', 'на\\s+vps', 'на\\s+впс', 'через\\s+ssh',
+    // Russian — actions (Russian keywords kept as \u escapes: "run", "execute",
+    // "install", "download", "save/create/edit/delete/read file", "take a
+    // screenshot", "open http", "parse", "search the web", "on the server",
+    // "in the terminal", "on the vps", "via ssh")
+    '\u0437\u0430\u043f\u0443\u0441\u0442\u0438', '\u0432\u044b\u043f\u043e\u043b\u043d\u0438', '\u0443\u0441\u0442\u0430\u043d\u043e\u0432\u0438', '\u043f\u043e\u0441\u0442\u0430\u0432\u044c', '\u0441\u043a\u0430\u0447\u0430\u0439', '\u0437\u0430\u0433\u0440\u0443\u0437\u0438', '\u0441\u043e\u0445\u0440\u0430\u043d\u0438 \u0444\u0430\u0439\u043b',
+    '\u0441\u043e\u0437\u0434\u0430\u0439 \u0444\u0430\u0439\u043b', '\u0441\u043e\u0437\u0434\u0430\u0442\u044c \u0444\u0430\u0439\u043b', '\u043d\u0430\u043f\u0438\u0448\u0438 \u0444\u0430\u0439\u043b', '\u0437\u0430\u043f\u0438\u0448\u0438 \u0432 \u0444\u0430\u0439\u043b', '\u0438\u0437\u043c\u0435\u043d\u0438 \u0444\u0430\u0439\u043b',
+    '\u043e\u0442\u0440\u0435\u0434\u0430\u043a\u0442\u0438\u0440\u0443\u0439', '\u0443\u0434\u0430\u043b\u0438 \u0444\u0430\u0439\u043b', '\u043d\u0430\u0439\u0434\u0438 \u0444\u0430\u0439\u043b', '\u043f\u0440\u043e\u0447\u0438\u0442\u0430\u0439 \u0444\u0430\u0439\u043b', '\u043f\u043e\u043a\u0430\u0436\u0438 \u0441\u043e\u0434\u0435\u0440\u0436\u0438\u043c\u043e\u0435',
+    '\u0441\u0434\u0435\u043b\u0430\u0439 \u0441\u043a\u0440\u0438\u043d\u0448\u043e\u0442', '\u0441\u043a\u0440\u0438\u043d\\s+(\u0441\u0430\u0439\u0442|\u0441\u0442\u0440\u0430\u043d\u0438\u0446)', '\u043e\u0442\u043a\u0440\u043e\u0439\\s+http', '\u0437\u0430\u0439\u0434\u0438\\s+\u043d\u0430',
+    '\u0441\u043f\u0430\u0440\u0441\u0438', '\u043f\u0430\u0440\u0441\u0438\u043d\u0433', '\u043d\u0430\u0439\u0434\u0438\\s+\u0432\\s+\u0438\u043d\u0442\u0435\u0440\u043d\u0435\u0442\u0435', '\u043f\u043e\u0438\u0449\u0438\\s+\u0432\\s+(\u0432\u0435\u0431\u0435|\u0441\u0435\u0442\u0438|\u0438\u043d\u0442\u0435\u0440\u043d\u0435\u0442\u0435)',
+    '\u043d\u0430\\s+\u0441\u0435\u0440\u0432\u0435\u0440\u0435', '\u0432\\s+\u0442\u0435\u0440\u043c\u0438\u043d\u0430\u043b\u0435', '\u043d\u0430\\s+vps', '\u043d\u0430\\s+\u0432\u043f\u0441', '\u0447\u0435\u0440\u0435\u0437\\s+ssh',
     // Russian — agent triggers (caught by subagent-bypass too, but list for clarity)
-    'саб[-\\s]?агент', 'субагент', '\\d+\\s*агент',
+    '\u0441\u0430\u0431[-\\s]?\u0430\u0433\u0435\u043d\u0442', '\u0441\u0443\u0431\u0430\u0433\u0435\u043d\u0442', '\\d+\\s*\u0430\u0433\u0435\u043d\u0442',
     // English — actions
     'execute', 'install\\s', 'download', 'screenshot\\s+(of|the)', 'fetch\\s+the',
     'scrape', 'crawl', 'create\\s+file', 'write\\s+file', 'edit\\s+file',
@@ -1523,13 +1531,13 @@ app.post('/auto/run', requiresAuth, async (req, res) => {
     // same logic via internal HTTP call. Pre-pend agent's systemPrompt as a
     // role-specific preamble before the user's actual request, plus the
     // chat-memory block when available.
-    const memoryPrefix = memoryBlock ? `# Память по чату\n${memoryBlock}\n\n` : '';
+    const memoryPrefix = memoryBlock ? `# Chat memory\n${memoryBlock}\n\n` : '';
     const rolePrefix = agent?.systemPrompt
-      ? `# Твоя роль (${agent.name})\n${agent.systemPrompt}\n\n`
+      ? `# Your role (${agent.name})\n${agent.systemPrompt}\n\n`
       : '';
     const promptWithAgent =
       memoryPrefix + rolePrefix +
-      (memoryPrefix || rolePrefix ? `# Запрос пользователя\n\n${promptRaw}` : promptRaw);
+      (memoryPrefix || rolePrefix ? `# User request\n\n${promptRaw}` : promptRaw);
     try {
       const upstream = await fetch(`http://127.0.0.1:${config.port}/agent/run`, {
         method: 'POST',
@@ -1549,9 +1557,9 @@ app.post('/auto/run', requiresAuth, async (req, res) => {
 
   // ── Direct Kimi: stream chat completion as stdout chunks ────────────────
   const baseSystem =
-    'Ты — помощник в чате. Отвечай по делу, ёмко, на языке вопроса. ' +
-    'Если нужно показать код — оборачивай в ```блоки``` с указанием языка. ' +
-    'Не пиши «не могу выполнить» — просто отвечай тем что знаешь.';
+    'You are a chat assistant. Answer to the point, concisely, in the language of the question. ' +
+    'If you need to show code — wrap it in ```blocks``` with the language specified. ' +
+    'Never write "I can\'t do that" — just answer with what you know.';
   const systemContent = [
     agent?.systemPrompt || '',
     baseSystem,
@@ -1907,54 +1915,54 @@ function extractSteps(sessionJson, sentCount) {
    oneshot mode, so --resume can't be used directly — we inject manually.)
    ──────────────────────────────────────────────────────────────────────────── */
 const RENDER_HINT =
-  '# Как тебя видит пользователь\n' +
-  'Ты подключён к веб-чату, не к голому CLI. Любой файл, который ты создашь по абсолютному пути ' +
-  'в /tmp или /root/.hermes, чат автоматически подтянет и покажет: PNG/JPG/WEBP/GIF/SVG/BMP — ' +
-  'превьюхой прямо под твоим ответом, остальное — ссылкой. Поэтому **не пиши «не могу отобразить ' +
-  'в CLI»**: достаточно создать файл и упомянуть путь — пользователь увидит картинку.\n\n' +
-  '## Сабагенты\n' +
-  'Если юзер пишет «N сабагентов / N агентов / параллельно / пусть каждый / дебаты / N мнений / ' +
-  'N subagents / delegate / in parallel» — сразу:\n' +
+  '# How the user sees you\n' +
+  'You are connected to a web chat, not a bare CLI. Any file you create at an absolute path ' +
+  'in /tmp or /root/.hermes is automatically picked up and shown by the chat: PNG/JPG/WEBP/GIF/SVG/BMP — ' +
+  'as a preview right under your answer, everything else — as a link. So **never write "I can\'t display ' +
+  'this in a CLI"**: just create the file and mention the path — the user will see the image.\n\n' +
+  '## Subagents\n' +
+  'If the user writes "N subagents / N agents / in parallel / let each / debate / N opinions / ' +
+  'delegate" — immediately:\n' +
   '1. `skill_view {"name":"orchestrator"}`\n' +
-  '2. `delegate_task {"tasks":[…N задач…]}` с `"toolsets":["terminal"]` для каждой\n' +
-  '3. Синтезируй финал.\n\n' +
-  'Своими руками `terminal/curl` НЕ дёргай — сабагенты сделают. ' +
-  '`web_search` НЕ существует — только `terminal+curl`. Лимит 5 параллельных за вызов.\n\n' +
-  '## Браузер и скриншоты\n' +
-  '**Используй Playwright** — он установлен глобально, работает чисто, без snap-confinement.\n' +
-  'Для длинных страниц обязательно `--full-page`:\n' +
+  '2. `delegate_task {"tasks":[…N tasks…]}` with `"toolsets":["terminal"]` for each\n' +
+  '3. Synthesize the final answer.\n\n' +
+  'Do NOT run `terminal/curl` yourself — the subagents will. ' +
+  '`web_search` does NOT exist — only `terminal+curl`. Limit: 5 parallel per call.\n\n' +
+  '## Browser and screenshots\n' +
+  '**Use Playwright** — it is installed globally and works cleanly, no snap confinement.\n' +
+  'For long pages always use `--full-page`:\n' +
   '```bash\n' +
   'npx playwright screenshot --browser=chromium --viewport-size=1280,800 \\\n' +
-  '  --full-page <URL> /tmp/имя.png\n' +
+  '  --full-page <URL> /tmp/name.png\n' +
   '```\n' +
-  'Для интерактива (клик, ввод, ожидание) пиши скрипт через `node -e "..."` с ' +
-  '`require(\'playwright\')`. Browsers лежат в `/root/.cache/ms-playwright`.\n\n' +
-  'Не используй `chromium-browser --headless --screenshot=...` — snap-версия пишет в ' +
-  '`/tmp/snap-private-tmp/snap.chromium/tmp/...`, путь окажется не там, где ты его назвал.\n\n' +
-  '## Где брать картинки\n' +
-  '**Не скриншоть google.com / google.com/search / images.google.com** — Google блочит ' +
-  'IP сервера капчей «unusual traffic», ты получишь страницу-предупреждение, а не результат. ' +
-  'Если пользователь просит «картинку X», используй один из этих источников (без ключа, без капчи):\n' +
+  'For interaction (click, input, waiting) write a script via `node -e "..."` with ' +
+  '`require(\'playwright\')`. Browsers live in `/root/.cache/ms-playwright`.\n\n' +
+  'Do not use `chromium-browser --headless --screenshot=...` — the snap version writes to ' +
+  '`/tmp/snap-private-tmp/snap.chromium/tmp/...`, so the path ends up not where you named it.\n\n' +
+  '## Where to get images\n' +
+  '**Do not screenshot google.com / google.com/search / images.google.com** — Google blocks ' +
+  'the server IP with an "unusual traffic" captcha; you will get a warning page, not the result. ' +
+  'If the user asks for "a picture of X", use one of these sources (no key, no captcha):\n' +
   '\n' +
-  '1. **Wikimedia Commons API** — лучший вариант для конкретных тем:\n' +
+  '1. **Wikimedia Commons API** — the best option for specific topics:\n' +
   '   ```bash\n' +
-  '   QUERY="cat"   # тема\n' +
+  '   QUERY="cat"   # topic\n' +
   '   URL=$(curl -s "https://commons.wikimedia.org/w/api.php?action=query&format=json&prop=imageinfo&generator=search&gsrnamespace=6&gsrsearch=${QUERY}&gsrlimit=1&iiprop=url" | python3 -c "import sys,json; d=json.load(sys.stdin); pages=d[\\"query\\"][\\"pages\\"]; print(list(pages.values())[0][\\"imageinfo\\"][0][\\"url\\"])")\n' +
   '   curl -sL "$URL" -o /tmp/${QUERY}.jpg\n' +
   '   ```\n' +
   '\n' +
-  '2. **Тематические free-API без ключа** (когда хочется быстро):\n' +
-  '   - кот:  `curl -sL "https://cataas.com/cat" -o /tmp/cat.jpg`\n' +
-  '   - пёс:  `curl -sL "$(curl -s https://dog.ceo/api/breeds/image/random | python3 -c \\"import sys,json; print(json.load(sys.stdin)[\\\\\\"message\\\\\\"])\\")" -o /tmp/dog.jpg`\n' +
-  '   - случайное по seed: `curl -sL "https://picsum.photos/seed/${QUERY}/1280/800" -o /tmp/${QUERY}.jpg`\n' +
+  '2. **Topical keyless free APIs** (when you want it fast):\n' +
+  '   - cat:  `curl -sL "https://cataas.com/cat" -o /tmp/cat.jpg`\n' +
+  '   - dog:  `curl -sL "$(curl -s https://dog.ceo/api/breeds/image/random | python3 -c \\"import sys,json; print(json.load(sys.stdin)[\\\\\\"message\\\\\\"])\\")" -o /tmp/dog.jpg`\n' +
+  '   - random by seed: `curl -sL "https://picsum.photos/seed/${QUERY}/1280/800" -o /tmp/${QUERY}.jpg`\n' +
   '\n' +
-  '3. **DuckDuckGo Images** — если нужен поиск по тексту с превью:\n' +
+  '3. **DuckDuckGo Images** — if you need a text search with previews:\n' +
   '   ```bash\n' +
   '   npx playwright screenshot --browser=chromium --viewport-size=1280,800 \\\n' +
   '     --full-page "https://duckduckgo.com/?q=${QUERY}&iax=images&ia=images" /tmp/results.png\n' +
   '   ```\n' +
   '\n' +
-  'Скриншот СТРАНИЦЫ (любого сайта кроме Google) делай Playwright, как описано выше.\n\n';
+  'Take PAGE screenshots (of any site except Google) with Playwright, as described above.\n\n';
 
 /**
  * Bypass mode: instead of spawning Hermes (which can take 2-4 min for
@@ -1966,8 +1974,8 @@ const RENDER_HINT =
 async function runSubagentBypass({ n, userPrompt, contextPreamble, res, onClose }) {
   const startedAt = Date.now();
   const subtaskGoals = Array.from({ length: n }, (_, i) =>
-    `Независимо реши задачу пользователя. Это твой ${i + 1}-й из ${n} параллельных под-агентов; ` +
-    'ты не знаешь ответы других. Дай ясный аргументированный ответ. Будь краток (3-7 предложений).'
+    `Solve the user's task independently. You are sub-agent ${i + 1} of ${n} running in parallel; ` +
+    'you do not know the others\' answers. Give a clear, well-argued answer. Be brief (3-7 sentences).'
   );
 
   // Emit a synthetic delegate_task tool_call so the UI shows a debate panel.
@@ -2018,14 +2026,14 @@ async function runSubagentBypass({ n, userPrompt, contextPreamble, res, onClose 
           {
             role: 'system',
             content:
-              'Ты — независимый под-агент в составе команды. Отвечай ёмко и по делу. ' +
-              'Не упоминай других агентов. Не извиняйся. Если запрос на русском — отвечай по-русски.',
+              'You are an independent sub-agent on a team. Answer concisely and to the point. ' +
+              'Do not mention other agents. Do not apologize. Answer in the user\'s language.',
           },
-          { role: 'user', content: `Задача: ${st.goal}\n\nЗапрос пользователя: ${userPrompt}` },
+          { role: 'user', content: `Task: ${st.goal}\n\nUser request: ${userPrompt}` },
         ],
       };
       const resp = await callKimiChatCompletion(body, { signal: undefined });
-      const summary = resp?.choices?.[0]?.message?.content?.trim() || '_(пусто)_';
+      const summary = resp?.choices?.[0]?.message?.content?.trim() || '_(empty)_';
       subResults[st.index] = {
         index: st.index,
         status: 'completed',
@@ -2058,17 +2066,17 @@ async function runSubagentBypass({ n, userPrompt, contextPreamble, res, onClose 
         {
           role: 'system',
           content:
-            'Тебе пришли N независимых ответов от под-агентов. Синтезируй короткий итоговый ответ ' +
-            'для пользователя на основе их ответов: что они согласны/не согласны, ключевые выводы. ' +
-            'Будь краток (5-10 предложений) и структурирован. Если запрос на русском — отвечай по-русски.',
+            'You received N independent answers from sub-agents. Synthesize a short final answer ' +
+            'for the user based on their answers: where they agree/disagree, the key takeaways. ' +
+            'Be brief (5-10 sentences) and structured. Answer in the user\'s language.',
         },
         {
           role: 'user',
           content:
-            `Запрос пользователя: ${userPrompt}\n\n` +
-            `Ответы под-агентов:\n` +
+            `User request: ${userPrompt}\n\n` +
+            `Sub-agent answers:\n` +
             subResults
-              .map((r, i) => `\n### Под-агент #${i + 1} (${r.status})\n${r.summary || r.error || '_нет ответа_'}`)
+              .map((r, i) => `\n### Sub-agent #${i + 1} (${r.status})\n${r.summary || r.error || '_no answer_'}`)
               .join('\n'),
         },
       ],
@@ -2104,8 +2112,8 @@ async function runSubagentBypass({ n, userPrompt, contextPreamble, res, onClose 
  */
 // Match any image path under /tmp (covers /tmp/hk_uploads/ uploads AND
 // /tmp/<name>.png from previous agent runs that user references).
-const VISION_IMG_RE = /(\/tmp\/[\w./@+\- ()а-яА-ЯёЁ]+?\.(?:png|jpe?g|webp|gif|bmp))/gi;
-const EXEC_KEYWORDS_RE = /(?:запусти|выполни|сделай|создай|создать|поставь|установи|скачай|загрузи|сохрани|открой|run\s|execute|create\s|install\s|download\s|playwright|chromium|curl|wget|npm|npx|python|node\s|bash|shell|terminal|скриншот\s+сайт|screenshot)/i;
+const VISION_IMG_RE = /(\/tmp\/[\w./@+\- ()\u0430-\u044f\u0410-\u042f\u0451\u0401]+?\.(?:png|jpe?g|webp|gif|bmp))/gi;
+const EXEC_KEYWORDS_RE = /(?:\u0437\u0430\u043f\u0443\u0441\u0442\u0438|\u0432\u044b\u043f\u043e\u043b\u043d\u0438|\u0441\u0434\u0435\u043b\u0430\u0439|\u0441\u043e\u0437\u0434\u0430\u0439|\u0441\u043e\u0437\u0434\u0430\u0442\u044c|\u043f\u043e\u0441\u0442\u0430\u0432\u044c|\u0443\u0441\u0442\u0430\u043d\u043e\u0432\u0438|\u0441\u043a\u0430\u0447\u0430\u0439|\u0437\u0430\u0433\u0440\u0443\u0437\u0438|\u0441\u043e\u0445\u0440\u0430\u043d\u0438|\u043e\u0442\u043a\u0440\u043e\u0439|run\s|execute|create\s|install\s|download\s|playwright|chromium|curl|wget|npm|npx|python|node\s|bash|shell|terminal|\u0441\u043a\u0440\u0438\u043d\u0448\u043e\u0442\s+\u0441\u0430\u0439\u0442|screenshot)/i;
 
 /**
  * Extract just the user-typed text from a prompt that may have been wrapped
@@ -2170,7 +2178,7 @@ async function runVisionBypass({ prompt, userPrompt, res, onClose }) {
     return;
   }
 
-  const userText = extractUserText(userPrompt) || 'Опиши подробно что на изображении.';
+  const userText = extractUserText(userPrompt) || 'Describe in detail what is in the image.';
   const visionBody = {
     model: config.kimiModel,
     stream: true,
@@ -2180,10 +2188,10 @@ async function runVisionBypass({ prompt, userPrompt, res, onClose }) {
       {
         role: 'system',
         content:
-          'Идентифицируй что/кто на фото. Сначала отметь стиль рендера (3D-модель из игры / ' +
-          'реальное фото / аниме / 2D-арт). Дай **3 кандидата ранжировано** в формате: ' +
-          '«**Имя** (источник) — 2-3 совпадающих признака». В конце одно предложение: ' +
-          '«Скорее всего это X». Отвечай кратко на языке вопроса.',
+          'Identify what/who is in the photo. First note the render style (3D game model / ' +
+          'real photo / anime / 2D art). Give **3 ranked candidates** in the format: ' +
+          '"**Name** (source) — 2-3 matching features". End with one sentence: ' +
+          '"Most likely this is X". Answer briefly in the language of the question.',
       },
       { role: 'user', content: [{ type: 'text', text: userText }, ...imageBlocks] },
     ],
@@ -2242,7 +2250,7 @@ async function runVisionBypass({ prompt, userPrompt, res, onClose }) {
       }
     } else {
       // Non-streaming fallback (callKimiChatCompletion returned parsed JSON)
-      const answer = result?.choices?.[0]?.message?.content?.trim() || '_(пустой ответ)_';
+      const answer = result?.choices?.[0]?.message?.content?.trim() || '_(empty response)_';
       sseWrite(res, { type: 'stdout', data: answer + '\n' });
     }
   } catch (e) {
@@ -2265,27 +2273,27 @@ async function runVisionBypass({ prompt, userPrompt, res, onClose }) {
 function buildContextPreamble(context) {
   const lines = [RENDER_HINT, '', PUBLISH_HINT];
   if (Array.isArray(context) && context.length > 0) {
-    lines.push('# Контекст предыдущего диалога');
+    lines.push('# Previous conversation context');
     lines.push('');
     for (const turn of context.slice(-12)) {
       if (!turn || typeof turn.role !== 'string' || typeof turn.content !== 'string') continue;
-      const role = turn.role === 'user' ? 'Пользователь' : turn.role === 'assistant' ? 'Ты' : 'Система';
+      const role = turn.role === 'user' ? 'User' : turn.role === 'assistant' ? 'You' : 'System';
       const body = turn.content.trim();
       if (!body) continue;
       lines.push(`### ${role}:`);
-      lines.push(body.length > 1500 ? body.slice(0, 1500) + ' …(обрезано)' : body);
+      lines.push(body.length > 1500 ? body.slice(0, 1500) + ' …(truncated)' : body);
       lines.push('');
     }
     lines.push('---');
     lines.push('');
-    lines.push('# Новая задача');
+    lines.push('# New task');
     lines.push('');
   }
   return lines.join('\n');
 }
 
 /* Walk text and pick image paths that resolve into the allowlist. */
-const IMG_PATH_RE = /(\/[\w./@+\- ()а-яА-ЯёЁ]+?\.(?:png|jpe?g|webp|gif|svg|bmp))/gi;
+const IMG_PATH_RE = /(\/[\w./@+\- ()\u0430-\u044f\u0410-\u042f\u0451\u0401]+?\.(?:png|jpe?g|webp|gif|svg|bmp))/gi;
 
 function findArtifactsInText(text, allowedRoots, seenAbs) {
   if (typeof text !== 'string' || !text) return [];
@@ -2404,14 +2412,14 @@ app.post('/agent/run', requiresAuth, (req, res) => {
   delete childEnv.OPENAI_BASE_URL;
   delete childEnv.OPENAI_API_KEY;
 
-  // Auto-detect "N subagents / N агентов" — when matched, BYPASS Hermes
+  // Auto-detect "N subagents" (English or Russian) — when matched, BYPASS Hermes
   // entirely and run N parallel Kimi chat-completions ourselves. This avoids
   // the 2-4 minute reasoning_content overhead of Hermes oneshot mode.
-  const RU_NUM = { 'один':1,'одного':1,'два':2,'двух':2,'три':3,'трёх':3,'трем':3,'трём':3,'трое':3,'четыре':4,'четырёх':4,'пять':5,'пяти':5,'шесть':6,'семь':7,'восемь':8,'девять':9,'десять':10 };
+  const RU_NUM = { '\u043e\u0434\u0438\u043d':1,'\u043e\u0434\u043d\u043e\u0433\u043e':1,'\u0434\u0432\u0430':2,'\u0434\u0432\u0443\u0445':2,'\u0442\u0440\u0438':3,'\u0442\u0440\u0451\u0445':3,'\u0442\u0440\u0435\u043c':3,'\u0442\u0440\u0451\u043c':3,'\u0442\u0440\u043e\u0435':3,'\u0447\u0435\u0442\u044b\u0440\u0435':4,'\u0447\u0435\u0442\u044b\u0440\u0451\u0445':4,'\u043f\u044f\u0442\u044c':5,'\u043f\u044f\u0442\u0438':5,'\u0448\u0435\u0441\u0442\u044c':6,'\u0441\u0435\u043c\u044c':7,'\u0432\u043e\u0441\u0435\u043c\u044c':8,'\u0434\u0435\u0432\u044f\u0442\u044c':9,'\u0434\u0435\u0441\u044f\u0442\u044c':10 };
   function detectSubagentCount(p) {
-    const m1 = p.match(/(\d{1,2})\s*(?:саб[-\s]?агент|субагент|sub[-\s]?agent|agent)/i);
+    const m1 = p.match(/(\d{1,2})\s*(?:\u0441\u0430\u0431[-\s]?\u0430\u0433\u0435\u043d\u0442|\u0441\u0443\u0431\u0430\u0433\u0435\u043d\u0442|sub[-\s]?agent|agent)/i);
     if (m1) return Math.min(5, Math.max(2, parseInt(m1[1], 10)));
-    const m2 = p.match(/(один|одного|два|двух|три|трёх|трех|трое|четыре|четырёх|пять|пяти|шесть|семь|восемь|девять|десять)\s+(?:саб[-\s]?агент|субагент|агент)/i);
+    const m2 = p.match(/(\u043e\u0434\u0438\u043d|\u043e\u0434\u043d\u043e\u0433\u043e|\u0434\u0432\u0430|\u0434\u0432\u0443\u0445|\u0442\u0440\u0438|\u0442\u0440\u0451\u0445|\u0442\u0440\u0435\u0445|\u0442\u0440\u043e\u0435|\u0447\u0435\u0442\u044b\u0440\u0435|\u0447\u0435\u0442\u044b\u0440\u0451\u0445|\u043f\u044f\u0442\u044c|\u043f\u044f\u0442\u0438|\u0448\u0435\u0441\u0442\u044c|\u0441\u0435\u043c\u044c|\u0432\u043e\u0441\u0435\u043c\u044c|\u0434\u0435\u0432\u044f\u0442\u044c|\u0434\u0435\u0441\u044f\u0442\u044c)\s+(?:\u0441\u0430\u0431[-\s]?\u0430\u0433\u0435\u043d\u0442|\u0441\u0443\u0431\u0430\u0433\u0435\u043d\u0442|\u0430\u0433\u0435\u043d\u0442)/i);
     if (m2) {
       const n = RU_NUM[m2[1].toLowerCase()];
       if (n) return Math.min(5, Math.max(2, n));
@@ -2492,7 +2500,7 @@ app.post('/agent/run', requiresAuth, (req, res) => {
                 type: 'loop_detected',
                 tool: s.name,
                 count: sameCount,
-                message: `Агент повторил инструмент "${s.name}" ${sameCount} раз подряд — похоже на цикл, останавливаю.`,
+                message: `The agent repeated the "${s.name}" tool ${sameCount} times in a row — looks like a loop, stopping.`,
               });
               try { child.kill('SIGTERM'); } catch {}
               setTimeout(() => { try { child.kill('SIGKILL'); } catch {} }, 2000);
