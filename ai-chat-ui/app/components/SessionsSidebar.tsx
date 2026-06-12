@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Plus, Trash2, X, MessageSquare, Zap, ExternalLink, Sparkles, Pencil, Play } from 'lucide-react'
+import { Plus, Trash2, X, MessageSquare, Zap, ExternalLink, Sparkles, Pencil, Play, Youtube } from 'lucide-react'
 import Link from 'next/link'
 import { KimiMascot } from '@/components/ui/kimi-mascot'
 import type { ChatSession } from '../lib/sessions'
@@ -10,13 +10,13 @@ import type { ChatSession } from '../lib/sessions'
 function relTime(ms: number): string {
   const diff = Date.now() - ms
   const m = Math.round(diff / 60_000)
-  if (m < 1) return 'только что'
-  if (m < 60) return `${m} мин`
+  if (m < 1) return 'just now'
+  if (m < 60) return `${m} min`
   const h = Math.round(m / 60)
-  if (h < 24) return `${h} ч`
+  if (h < 24) return `${h} h`
   const d = Math.round(h / 24)
-  if (d < 30) return `${d} дн`
-  return new Date(ms).toLocaleDateString('ru')
+  if (d < 30) return `${d} d`
+  return new Date(ms).toLocaleDateString('en-US')
 }
 
 export interface SessionsSidebarProps {
@@ -60,7 +60,7 @@ export function SessionsSidebar({
     setDraft(s.title)
   }
   const commitRename = () => {
-    if (editing) onRename(editing, draft.trim() || 'Без названия')
+    if (editing) onRename(editing, draft.trim() || 'Untitled')
     setEditing(null)
   }
 
@@ -105,7 +105,7 @@ export function SessionsSidebar({
               <button
                 onClick={onClose}
                 className="w-7 h-7 grid place-items-center rounded-md text-white/45 hover:text-white hover:bg-white/[0.06]"
-                aria-label="Закрыть"
+                aria-label="Close"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -124,22 +124,22 @@ export function SessionsSidebar({
                   e.preventDefault()
                   window.open(window.location.pathname + '?new=1', '_blank', 'noopener')
                 }}
-                title="Клик — новый чат · средняя кнопка — открыть в новой вкладке"
+                title="Click for a new chat · middle-click to open in a new tab"
                 className="w-full flex items-center justify-center gap-2 h-9 rounded-md bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white text-[13px] font-medium shadow-md shadow-violet-500/30 hover:brightness-110 transition"
               >
                 <Plus className="w-4 h-4" />
-                Новый чат
+                New chat
               </button>
             </div>
 
             {/* sessions list */}
             <div className="flex-1 overflow-y-auto py-3 px-2 min-h-0">
               <div className="text-[10px] uppercase tracking-[0.14em] text-white/35 px-2 py-2">
-                Сессии · {sorted.length}
+                Sessions · {sorted.length}
               </div>
               {sorted.length === 0 && (
                 <div className="text-[12px] text-white/40 px-2 py-3">
-                  Пока пусто. Начни диалог — он появится здесь.
+                  Nothing here yet. Start a conversation and it will show up here.
                 </div>
               )}
               {sorted.map((s) => {
@@ -149,7 +149,7 @@ export function SessionsSidebar({
                   <div
                     key={s.id}
                     role="link"
-                    title="Клик — открыть · средняя кнопка — в новой вкладке"
+                    title="Click to open · middle-click to open in a new tab"
                     className={`group relative flex items-start gap-2 px-2.5 py-2 rounded-md cursor-pointer mb-0.5 transition ${
                       active ? 'bg-white/[0.07]' : 'hover:bg-white/[0.04]'
                     }`}
@@ -208,7 +208,7 @@ export function SessionsSidebar({
                         {s.messages.length > 0 && (
                           <>
                             <span>·</span>
-                            <span>{s.messages.length} сообщ.</span>
+                            <span>{s.messages.length} msg</span>
                           </>
                         )}
                       </div>
@@ -220,8 +220,8 @@ export function SessionsSidebar({
                           beginRename(s)
                         }}
                         className="w-6 h-6 grid place-items-center rounded text-white/40 hover:text-white hover:bg-white/[0.08] transition"
-                        aria-label="Переименовать"
-                        title="Переименовать (или двойной клик по названию)"
+                        aria-label="Rename"
+                        title="Rename (or double-click the title)"
                       >
                         <Pencil className="w-3.5 h-3.5" />
                       </button>
@@ -231,8 +231,8 @@ export function SessionsSidebar({
                           onDelete(s.id)
                         }}
                         className="w-6 h-6 grid place-items-center rounded text-white/35 hover:text-red-300 hover:bg-red-500/10 transition"
-                        aria-label="Удалить сессию"
-                        title="Удалить"
+                        aria-label="Delete session"
+                        title="Delete"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
@@ -251,7 +251,18 @@ export function SessionsSidebar({
               >
                 <span className="flex items-center gap-2">
                   <Play className="w-3.5 h-3.5 text-violet-300" />
-                  Автоматизации
+                  Automations
+                </span>
+                <ExternalLink className="w-3.5 h-3.5 opacity-60" />
+              </Link>
+              <Link
+                href="/media"
+                onClick={onClose}
+                className="flex items-center justify-between gap-2 px-3 py-2 rounded-md bg-white/[0.03] border border-white/[0.06] hover:bg-white/[0.06] text-[12.5px] text-white/75 hover:text-white transition"
+              >
+                <span className="flex items-center gap-2">
+                  <Youtube className="w-3.5 h-3.5 text-red-400" />
+                  Media Studio
                 </span>
                 <ExternalLink className="w-3.5 h-3.5 opacity-60" />
               </Link>

@@ -127,6 +127,17 @@ More: [`cli/README.md`](cli/README.md).
 
 ---
 
+## Media Studio (optional)
+
+A `/media` section in the chat UI for growing a YouTube channel: RSS-based
+channel overview and per-video views, plus generators for video ideas, skeleton
+scripts and thumbnail briefs that run through the same proxy model. Enable it
+by setting `NEXT_PUBLIC_YT_CHANNEL_ID` (and optionally
+`NEXT_PUBLIC_BRAND_SITE`) in `ai-chat-ui/.env.local`, then edit
+`CHANNEL_PROFILE` in `ai-chat-ui/app/lib/mediaStudio.ts` to match your channel.
+
+---
+
 ## SSH access to the VPS
 
 Full guide: [`deploy/ssh/README.md`](deploy/ssh/README.md). TL;DR:
