@@ -38,3 +38,32 @@ your-domain.tld {
         format json
     }
 }
+
+# Optional — Model Arena on its own subdomain (arena.your-domain.tld).
+# Point an A record for `arena` at the VPS, then this serves the /arena page
+# (and the /_kp proxy it calls) at the subdomain root. Still behind the UI's
+# auth — same login as the main app.
+arena.your-domain.tld {
+    encode zstd gzip
+
+    handle_path /_kp/* {
+        reverse_proxy localhost:3001 {
+            flush_interval -1
+        }
+    }
+
+    # Serve the arena page at the subdomain root.
+    rewrite / /arena
+
+    handle {
+        encode zstd gzip
+        reverse_proxy localhost:3002 {
+            flush_interval -1
+        }
+    }
+
+    log {
+        output file /var/log/caddy/agent-stack.log
+        format json
+    }
+}

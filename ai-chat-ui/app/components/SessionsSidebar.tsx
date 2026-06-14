@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Plus, Trash2, X, MessageSquare, Zap, ExternalLink, Sparkles, Pencil, Play, Youtube } from 'lucide-react'
+import { Plus, Trash2, X, MessageSquare, Zap, ExternalLink, Sparkles, Pencil, Play, Youtube, Swords } from 'lucide-react'
 import Link from 'next/link'
 import { KimiMascot } from '@/components/ui/kimi-mascot'
 import type { ChatSession } from '../lib/sessions'
@@ -263,6 +263,17 @@ export function SessionsSidebar({
                 <span className="flex items-center gap-2">
                   <Youtube className="w-3.5 h-3.5 text-red-400" />
                   Media Studio
+                </span>
+                <ExternalLink className="w-3.5 h-3.5 opacity-60" />
+              </Link>
+              <Link
+                href="/arena"
+                onClick={onClose}
+                className="flex items-center justify-between gap-2 px-3 py-2 rounded-md bg-white/[0.03] border border-white/[0.06] hover:bg-white/[0.06] text-[12.5px] text-white/75 hover:text-white transition"
+              >
+                <span className="flex items-center gap-2">
+                  <Swords className="w-3.5 h-3.5 text-violet-300" />
+                  Model Arena
                 </span>
                 <ExternalLink className="w-3.5 h-3.5 opacity-60" />
               </Link>

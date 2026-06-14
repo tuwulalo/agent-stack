@@ -40,7 +40,7 @@ import {
   uid,
 } from './lib/sessions'
 import { agentFileUrl, DEFAULT_MODEL, DEFAULT_SYSTEM_PROMPT, HERMES_DASHBOARD, MODELS } from './lib/config'
-import { Brain, ExternalLink, FileText, LogOut, Menu, Paperclip, Play, RotateCcw, Sparkles, Terminal, Youtube, Zap } from 'lucide-react'
+import { Brain, ExternalLink, FileText, LogOut, Menu, Paperclip, Play, RotateCcw, Sparkles, Swords, Terminal, Youtube, Zap } from 'lucide-react'
 
 // Claude's vision pipeline handles at most 5 images per message — bigger
 // drops get split into sequential turns, with a "hold on" prompt for all
@@ -1004,6 +1004,14 @@ export default function Page() {
         >
           <Youtube className="w-3.5 h-3.5 text-red-400" />
           <span className="hidden sm:inline">Media</span>
+        </Link>
+        <Link
+          href="/arena"
+          className="px-2.5 py-1.5 rounded-md bg-white/[0.04] hover:bg-white/[0.09] border border-white/10 text-xs text-white/70 hover:text-white transition flex items-center gap-1.5"
+          title="Model Arena — compare Kimi, Claude, GLM side by side"
+        >
+          <Swords className="w-3.5 h-3.5 text-violet-300" />
+          <span className="hidden sm:inline">Arena</span>
         </Link>
         <button
           onClick={async () => {

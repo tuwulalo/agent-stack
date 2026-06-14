@@ -138,6 +138,28 @@ by setting `NEXT_PUBLIC_YT_CHANNEL_ID` (and optionally
 
 ---
 
+## Model Arena (optional)
+
+An `/arena` page to compare LLMs side by side: write a set of prompt-tests,
+pick up to 3 systems, and run every prompt through each — answers land in a
+grid with per-cell latency and token counts, exportable to Markdown.
+
+Every system is reached over an OpenAI-compatible `/chat/completions`
+endpoint, so adding one is just a base URL + key + model id. Three are wired
+out of the box (see `kimi-mcp-proxy/.env.example`):
+
+| System | Reached via | Key needed |
+|---|---|---|
+| **Kimi** | the proxy's own upstream | already set (`KIMI_API_KEY`) |
+| **Claude** | Anthropic OpenAI-compatible endpoint | `ANTHROPIC_API_KEY` |
+| **GLM** | Zhipu OpenAI-compatible endpoint (or OpenRouter) | `ZHIPU_API_KEY` |
+
+A system only appears once its key is set. The page sits behind the same
+login as the chat. To put it on its own subdomain (`arena.your-domain.tld`),
+see the optional block in [`deploy/caddy/Caddyfile.snippet`](deploy/caddy/Caddyfile.snippet).
+
+---
+
 ## SSH access to the VPS
 
 Full guide: [`deploy/ssh/README.md`](deploy/ssh/README.md). TL;DR:

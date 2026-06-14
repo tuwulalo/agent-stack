@@ -11,6 +11,7 @@ import morgan from 'morgan';
 import multer from 'multer';
 import { config } from './config.js';
 import { callKimiChatCompletion, getModelList } from './kimi-client.js';
+import { listArenaProviders, runArenaPrompt } from './arena.js';
 import {
   buildMemoryBlock,
   deleteNote,
@@ -107,6 +108,37 @@ registerAuthDeviceRoutes(app);
 
 app.get('/v1/models', requiresAuth, (req, res) => {
   res.json(getModelList());
+});
+
+// ── Model Arena ──────────────────────────────────────────────────────────
+// List the configured providers (those with an API key are `available`).
+app.get('/arena/providers', requiresAuth, (req, res) => {
+  res.json({ providers: listArenaProviders() });
+});
+
+// Run a single prompt against one provider; returns the answer + latency.
+app.post('/arena/run', requiresAuth, async (req, res) => {
+  const providerId = String(req.body?.providerId || '');
+  const prompt = typeof req.body?.prompt === 'string' ? req.body.prompt : '';
+  const system = typeof req.body?.system === 'string' && req.body.system.trim() ? req.body.system : undefined;
+  const maxTokens = Number.isInteger(req.body?.maxTokens) ? req.body.maxTokens : undefined;
+
+  if (!prompt.trim()) {
+    return res.status(400).json({ error: 'prompt is required' });
+  }
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), config.requestTimeoutMs);
+  try {
+    const result = await runArenaPrompt({ providerId, prompt, system, maxTokens, signal: controller.signal });
+    return res.json(result);
+  } catch (error) {
+    const status = error.name === 'AbortError' ? 504 : error.status || 500;
+    const message = error.name === 'AbortError' ? 'Provider request timed out' : error.message;
+    return res.status(status).json({ error: message });
+  } finally {
+    clearTimeout(timeout);
+  }
 });
 
 app.post('/v1/chat/completions', requiresAuth, async (req, res) => {
